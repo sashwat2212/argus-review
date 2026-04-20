@@ -26,3 +26,9 @@ packages = ["argus_api"]
 
 [tool.uv.sources]
 argus-core = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "aiosqlite>=0.22.1",
+    "pytest-asyncio>=1.3.0",
+]
