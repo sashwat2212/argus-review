@@ -93,7 +93,7 @@ def _format_finding_comment(f: Finding) -> str:
         "info": "⚪",
     }.get(f.severity, "⚪")
     return (
-        f"{severity_emoji} **{f.severity.upper()}: {f.title}}**\n\n"
+        f"{severity_emoji} **{f.severity.upper()}: {f.title}**\n\n"
         f"{f.description}\n\n"
         f"**Why it matters:** {f.why_it_matters}\n\n"
         f"**Suggested fix:**\n```\n{f.suggested_fix}\n```\n\n"

@@ -20,3 +20,6 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["argus_cli"]
+
+[tool.uv.sources]
+argus-core = { workspace = true }

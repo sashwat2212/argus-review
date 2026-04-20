@@ -85,6 +85,8 @@ def _extract_chunks(
         hunk_m = _HUNK_HEADER.match(line)
         if hunk_m:
             current_new_line = int(hunk_m.group(1))
+            if not accumulated:
+                chunk_start_line = current_new_line
             accumulated.append(line)
             continue
 
