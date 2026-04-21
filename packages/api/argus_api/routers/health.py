@@ -1,4 +1,9 @@
-# health router placeholder
 from fastapi import APIRouter
+from fastapi.responses import JSONResponse
 
-router = APIRouter()
+router = APIRouter(tags=["health"])
+
+
+@router.get("/health")
+async def health() -> JSONResponse:
+    return JSONResponse({"status": "ok"})
