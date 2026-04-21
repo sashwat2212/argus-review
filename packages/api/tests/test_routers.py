@@ -1,14 +1,9 @@
 from __future__ import annotations
 
-import os
 import uuid
-from datetime import datetime
-from unittest.mock import AsyncMock, patch
 
 import pytest
 from httpx import AsyncClient, ASGITransport
-
-os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
 
 from argus_api.main import app
 
@@ -39,6 +34,12 @@ async def test_list_reviews_empty():
 
 @pytest.mark.asyncio
 async def test_list_repositories_empty():
+    from argus_api.database import Base, engine
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
+
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.get("/api/v1/repositories")
     assert resp.status_code == 200
@@ -47,6 +48,12 @@ async def test_list_repositories_empty():
 
 @pytest.mark.asyncio
 async def test_get_review_not_found():
+    from argus_api.database import Base, engine
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
+
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.get(f"/api/v1/reviews/{uuid.uuid4()}")
     assert resp.status_code == 404
