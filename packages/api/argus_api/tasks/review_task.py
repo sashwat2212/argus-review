@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from datetime import datetime
 
 import httpx
@@ -14,6 +15,8 @@ from argus_api.tasks.celery_app import celery_app
 from argus_core.config import CoreConfig
 from argus_core.engine import ReviewEngine
 
+logger = logging.getLogger(__name__)
+
 
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=60)
 def run_review_task(
@@ -24,17 +27,34 @@ def run_review_task(
     repo_full_name: str,
 ) -> None:
     """Fetch diff, run the review engine, persist findings, post GitHub comments."""
+    from argus_api.database import engine
+
     try:
-        asyncio.run(
-            _async_run_review(
-                review_id=review_id,
-                pr_diff_url=pr_diff_url,
-                head_sha=head_sha,
-                repo_full_name=repo_full_name,
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(
+                _async_run_review(
+                    review_id=review_id,
+                    pr_diff_url=pr_diff_url,
+                    head_sha=head_sha,
+                    repo_full_name=repo_full_name,
+                )
             )
-        )
+        finally:
+            loop.run_until_complete(engine.dispose())
+            loop.close()
     except Exception as exc:
-        asyncio.run(_mark_failed(review_id, str(exc)))
+        try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                loop.run_until_complete(_mark_failed(review_id, str(exc)))
+            finally:
+                loop.run_until_complete(engine.dispose())
+                loop.close()
+        except Exception as err:
+            logger.error(f"Failed to mark review {review_id} as failed: {err}")
         raise self.retry(exc=exc)
 
 

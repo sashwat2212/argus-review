@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import logging
 from langchain_core.language_models import BaseChatModel
 
 from argus_core.agents._utils import parse_findings_response
 from argus_core.models import Finding, ReviewState
 from argus_core.prompts.quality import build_quality_prompt
+
+logger = logging.getLogger(__name__)
 
 
 async def run_quality_agent(state: ReviewState, llm: BaseChatModel) -> dict:
@@ -15,9 +18,12 @@ async def run_quality_agent(state: ReviewState, llm: BaseChatModel) -> dict:
         prompt = build_quality_prompt(chunk)
         try:
             response = await llm.ainvoke(prompt)
+            logger.info(f"Quality agent response for {chunk.file_path}: {response.content[:300]}")
             chunk_findings = parse_findings_response(response.content, agent="quality")
+            logger.info(f"Quality agent parsed {len(chunk_findings)} findings")
             findings.extend(chunk_findings)
         except Exception as exc:
+            logger.error(f"Quality agent error for {chunk.file_path}: {exc}")
             errors.append(f"quality_agent {chunk.file_path}:{chunk.start_line}: {exc}")
 
     return {**state, "quality_findings": findings, "errors": errors}

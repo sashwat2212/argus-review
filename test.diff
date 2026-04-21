@@ -1,0 +1,22 @@
+diff --git a/example.py b/example.py
+index abc1234..def5678 100644
+--- a/example.py
++++ b/example.py
+@@ -1,10 +1,15 @@
++import os
++import requests
+ def get_user_password():
+     """Fetch user password from environment."""
+-    return os.environ['USER_PASSWORD']  # Hardcoded secret!
++    password = os.environ.get('USER_PASSWORD')
++    return password
+
+ def fetch_data(url):
+-    response = requests.get(url, verify=False)  # SSL verification disabled!
++    response = requests.get(url, verify=True)
+     return response.json()
+
+ def execute_query(user_input):
+-    return db.execute(f"SELECT * FROM users WHERE id = {user_input}")
++    query = f"SELECT * FROM users WHERE id = {user_input}"
++    return db.execute(query)
