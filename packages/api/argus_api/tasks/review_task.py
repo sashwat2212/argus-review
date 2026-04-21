@@ -9,6 +9,7 @@ from sqlalchemy import select
 
 from argus_api.config import settings
 from argus_api.database import AsyncSessionLocal
+from argus_api.github_client import post_pr_review, set_commit_status
 from argus_api.models.finding import Finding as FindingModel
 from argus_api.models.review import Review
 from argus_api.tasks.celery_app import celery_app
@@ -49,7 +50,9 @@ def run_review_task(
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             try:
-                loop.run_until_complete(_mark_failed(review_id, str(exc)))
+                loop.run_until_complete(
+                    _mark_failed(review_id, str(exc), head_sha=head_sha, repo_full_name=repo_full_name)
+                )
             finally:
                 loop.run_until_complete(engine.dispose())
                 loop.close()
@@ -67,12 +70,17 @@ async def _async_run_review(
     await _update_review_status(review_id, "running", started_at=datetime.utcnow())
 
     token = settings.github_token
-    headers = {
+    if token and head_sha and repo_full_name:
+        await set_commit_status(
+            token, repo_full_name, head_sha, "pending", "Argus review in progress…"
+        )
+
+    diff_headers = {
         "Authorization": f"Bearer {token}",
         "Accept": "application/vnd.github.v3.diff",
     }
     async with httpx.AsyncClient() as client:
-        resp = await client.get(pr_diff_url, headers=headers, follow_redirects=True)
+        resp = await client.get(pr_diff_url, headers=diff_headers, follow_redirects=True)
         resp.raise_for_status()
         raw_diff = resp.text
 
@@ -89,6 +97,7 @@ async def _async_run_review(
     import uuid
 
     review_uuid = uuid.UUID(review_id)
+    pr_number: int | None = None
     async with AsyncSessionLocal() as session:
         for f in result.findings:
             session.add(
@@ -113,7 +122,23 @@ async def _async_run_review(
         db_review.score = result.score
         db_review.total_findings = len(result.findings)
         db_review.completed_at = datetime.utcnow()
+        pr_number = db_review.pr_number
         await session.commit()
+
+    if token and head_sha and repo_full_name and pr_number:
+        await post_pr_review(
+            token=token,
+            repo_full_name=repo_full_name,
+            pr_number=pr_number,
+            commit_id=head_sha,
+            findings=result.findings,
+            score=result.score,
+        )
+        commit_state = "success" if result.score >= 70 else "failure"
+        commit_desc = (
+            f"Score {result.score}/100 — {len(result.findings)} finding(s)"
+        )
+        await set_commit_status(token, repo_full_name, head_sha, commit_state, commit_desc)
 
 
 async def _update_review_status(review_id: str, status: str, **kwargs: object) -> None:
@@ -130,5 +155,10 @@ async def _update_review_status(review_id: str, status: str, **kwargs: object) -
             await session.commit()
 
 
-async def _mark_failed(review_id: str, error: str) -> None:
+async def _mark_failed(review_id: str, error: str, head_sha: str = "", repo_full_name: str = "") -> None:
     await _update_review_status(review_id, "failed", completed_at=datetime.utcnow())
+    token = settings.github_token
+    if token and head_sha and repo_full_name:
+        await set_commit_status(
+            token, repo_full_name, head_sha, "error", f"Argus review failed: {error[:100]}"
+        )
