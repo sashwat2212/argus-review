@@ -2,13 +2,20 @@ import { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReviewList } from './components/ReviewList';
 import { ReviewDetail } from './components/ReviewDetail';
+import { LoginPage } from './pages/LoginPage';
+import { getStoredApiKey } from './api/client';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 5_000, retry: 1 } },
 });
 
 export function App() {
+  const [authed, setAuthed] = useState(() => !!getStoredApiKey());
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  if (!authed) {
+    return <LoginPage onSuccess={() => setAuthed(true)} />;
+  }
 
   return (
     <QueryClientProvider client={queryClient}>
