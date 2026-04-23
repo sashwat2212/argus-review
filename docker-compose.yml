@@ -46,6 +46,7 @@ services:
       GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       SECRET_KEY: ${SECRET_KEY:-change-me}
+      ARGUS_API_KEY: ${ARGUS_API_KEY:-argus-dev-key-change-in-prod}
     ports:
       - "8000:8000"
     depends_on:
@@ -66,6 +67,7 @@ services:
       ARGUS_LLM_BACKEND: ${ARGUS_LLM_BACKEND:-ollama}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      ARGUS_API_KEY: ${ARGUS_API_KEY:-argus-dev-key-change-in-prod}
     depends_on:
       postgres:
         condition: service_healthy

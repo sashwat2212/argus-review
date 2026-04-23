@@ -12,6 +12,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from argus_api.config import settings
 from argus_api.database import init_db
 from argus_api.limiter import limiter
+from argus_api.routers.auth import router as auth_router
 from argus_api.routers.health import router as health_router
 from argus_api.routers.repositories import router as repos_router
 from argus_api.routers.reviews import router as reviews_router
@@ -38,6 +39,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth_router)
 app.include_router(health_router)
 app.include_router(webhooks_router)
 app.include_router(reviews_router)
