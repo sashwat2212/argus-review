@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from argus_api.database import get_session
+from argus_api.limiter import limiter
 from argus_api.models.finding import Finding
 from argus_api.models.review import Review
 from argus_api.schemas.finding import FindingOut, FindingPatch
@@ -17,7 +18,9 @@ router = APIRouter(prefix="/api/v1/reviews", tags=["reviews"])
 
 
 @router.get("", response_model=ReviewListOut)
+@limiter.limit("60/minute")
 async def list_reviews(
+    request: Request,
     page: int = 1,
     page_size: int = 20,
     status: str | None = None,
@@ -42,7 +45,9 @@ async def list_reviews(
 
 
 @router.get("/{review_id}", response_model=ReviewOut)
+@limiter.limit("120/minute")
 async def get_review(
+    request: Request,
     review_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
 ) -> Review:

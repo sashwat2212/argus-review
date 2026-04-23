@@ -5,9 +5,13 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from argus_api.config import settings
 from argus_api.database import init_db
+from argus_api.limiter import limiter
 from argus_api.routers.health import router as health_router
 from argus_api.routers.repositories import router as repos_router
 from argus_api.routers.reviews import router as reviews_router
@@ -21,6 +25,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 app = FastAPI(title="Argus API", version="0.1.0", lifespan=lifespan)
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 app.add_middleware(
     CORSMiddleware,

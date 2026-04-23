@@ -11,6 +11,7 @@ from sqlalchemy import select
 
 from argus_api.config import settings
 from argus_api.database import AsyncSessionLocal
+from argus_api.limiter import limiter
 from argus_api.models.organization import Organization
 from argus_api.models.repository import Repository
 from argus_api.models.review import Review
@@ -29,6 +30,7 @@ def _get_redis() -> aioredis.Redis:
 
 
 @router.post("/github", status_code=202)
+@limiter.limit("30/minute")
 async def github_webhook(
     request: Request,
     x_hub_signature_256: str | None = Header(None),
