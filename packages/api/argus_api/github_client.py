@@ -50,7 +50,7 @@ async def post_pr_review(
     score: int,
 ) -> None:
     summary = _build_summary(findings, score)
-    event = "REQUEST_CHANGES" if score < 70 else "COMMENT"
+    event = "COMMENT"
 
     inline_comments = []
     for f in findings:
