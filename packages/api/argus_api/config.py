@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://argus:argus_dev@localhost:5432/argus"
     redis_url: str = "redis://localhost:6379/0"
     secret_key: str = "change-me-in-production"
+    api_key: str = "change-me-api-key"
     github_webhook_secret: str = ""
     github_token: str = ""
     cors_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]

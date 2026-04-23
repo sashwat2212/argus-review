@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from argus_api.database import get_session
+from argus_api.dependencies import require_api_key
 from argus_api.limiter import limiter
 from argus_api.models.finding import Finding
 from argus_api.models.review import Review
@@ -25,6 +26,7 @@ async def list_reviews(
     page_size: int = 20,
     status: str | None = None,
     session: AsyncSession = Depends(get_session),
+    _auth: None = Depends(require_api_key),
 ) -> ReviewListOut:
     offset = (page - 1) * page_size
     query = select(Review).options(selectinload(Review.findings))
@@ -50,6 +52,7 @@ async def get_review(
     request: Request,
     review_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
+    _auth: None = Depends(require_api_key),
 ) -> Review:
     row = (
         await session.execute(
@@ -69,6 +72,7 @@ async def patch_finding(
     finding_id: uuid.UUID,
     body: FindingPatch,
     session: AsyncSession = Depends(get_session),
+    _auth: None = Depends(require_api_key),
 ) -> Finding:
     finding = (
         await session.execute(

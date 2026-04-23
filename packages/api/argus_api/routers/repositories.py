@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from argus_api.database import get_session
+from argus_api.dependencies import require_api_key
 from argus_api.models.repository import Repository
 from argus_api.schemas.repository import RepositoryOut
 
@@ -16,6 +17,7 @@ router = APIRouter(prefix="/api/v1/repositories", tags=["repositories"])
 @router.get("", response_model=list[RepositoryOut])
 async def list_repositories(
     session: AsyncSession = Depends(get_session),
+    _auth: None = Depends(require_api_key),
 ) -> list[Repository]:
     rows = (
         await session.execute(select(Repository).where(Repository.is_active.is_(True)))
@@ -27,6 +29,7 @@ async def list_repositories(
 async def get_repository(
     repo_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
+    _auth: None = Depends(require_api_key),
 ) -> Repository:
     row = (
         await session.execute(select(Repository).where(Repository.id == repo_id))
