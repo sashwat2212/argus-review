@@ -31,3 +31,25 @@ class ReviewListOut(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class OverviewStats(BaseModel):
+    total_reviews: int
+    completed_reviews: int
+    avg_score: float | None
+    pass_rate: float | None
+    open_findings: int
+    total_findings: int
+
+class ScorePoint(BaseModel):
+    date: str
+    score: float
+    pr_title: str | None
+
+class SeverityCount(BaseModel):
+    severity: str
+    count: int
+
+class CategoryCount(BaseModel):
+    category: str
+    count: int

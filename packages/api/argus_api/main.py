@@ -16,6 +16,7 @@ from argus_api.routers.auth import router as auth_router
 from argus_api.routers.health import router as health_router
 from argus_api.routers.repositories import router as repos_router
 from argus_api.routers.reviews import router as reviews_router
+from argus_api.routers.analytics import router as analytics_router
 from argus_api.routers.webhooks import router as webhooks_router
 
 
@@ -44,3 +45,4 @@ app.include_router(health_router)
 app.include_router(webhooks_router)
 app.include_router(reviews_router)
 app.include_router(repos_router)
+app.include_router(analytics_router)
