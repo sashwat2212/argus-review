@@ -1,0 +1,11 @@
+services:
+  api:
+    volumes:
+      - ./packages/api:/app/packages/api
+      - ./packages/core:/app/packages/core
+    command: uvicorn argus_api.main:app --host 0.0.0.0 --port 8000 --reload
+
+  worker:
+    volumes:
+      - ./packages/api:/app/packages/api
+      - ./packages/core:/app/packages/core
