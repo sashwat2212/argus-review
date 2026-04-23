@@ -3,10 +3,10 @@ import type { ReviewStatus } from '../api/types';
 interface Props { status: ReviewStatus }
 
 const COLORS: Record<ReviewStatus, string> = {
-  pending:   'bg-gray-100 text-gray-700',
-  running:   'bg-blue-100 text-blue-700',
-  completed: 'bg-green-100 text-green-700',
-  failed:    'bg-red-100 text-red-700',
+  pending:   'bg-gray-500/10 text-gray-400',
+  running:   'bg-blue-500/10 text-blue-400',
+  completed: 'bg-green-500/10 text-green-400',
+  failed:    'bg-red-500/10 text-red-400',
 };
 
 export function StatusBadge({ status }: Props) {
