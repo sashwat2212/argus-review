@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -17,7 +16,7 @@ class CoreConfig(BaseSettings):
     max_chunk_lines: int = 150
 
     def effective_backend(self) -> Literal["ollama", "anthropic"]:
-        """Auto-detect: if ANTHROPIC_API_KEY is set in env, use anthropic."""
-        if os.environ.get("ANTHROPIC_API_KEY") or (self.anthropic_api_key and self.llm_backend == "anthropic"):
+        """Use explicit backend setting; only auto-select anthropic if explicitly configured."""
+        if self.llm_backend == "anthropic" and self.anthropic_api_key:
             return "anthropic"
         return "ollama"

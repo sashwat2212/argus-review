@@ -18,7 +18,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "6380:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -31,6 +31,7 @@ services:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
+    entrypoint: ["/bin/sh", "-c", "ollama serve & sleep 5 && ollama pull qwen2.5-coder:3b && wait"]
 
   api:
     build:
@@ -61,6 +62,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://argus:argus_dev@postgres:5432/argus
       REDIS_URL: redis://redis:6379/0
       ARGUS_OLLAMA_BASE_URL: http://ollama:11434
+      ARGUS_OLLAMA_MODEL: ${ARGUS_OLLAMA_MODEL:-qwen2.5-coder:3b}
       ARGUS_LLM_BACKEND: ${ARGUS_LLM_BACKEND:-ollama}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
