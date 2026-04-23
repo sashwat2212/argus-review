@@ -40,3 +40,28 @@ export interface ReviewListOut {
   page: number;
   page_size: number;
 }
+
+export interface OverviewStats {
+  total_reviews: number;
+  completed_reviews: number;
+  avg_score: number | null;
+  pass_rate: number | null;
+  open_findings: number;
+  total_findings: number;
+}
+
+export interface ScorePoint {
+  date: string;
+  score: number;
+  pr_title: string | null;
+}
+
+export interface SeverityCount {
+  severity: string;
+  count: number;
+}
+
+export interface CategoryCount {
+  category: string;
+  count: number;
+}
