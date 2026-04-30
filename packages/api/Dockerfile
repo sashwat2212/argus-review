@@ -7,6 +7,8 @@ RUN pip install uv --no-cache-dir
 COPY pyproject.toml .
 COPY packages/core/pyproject.toml packages/core/
 COPY packages/api/pyproject.toml packages/api/
+COPY packages/api/alembic.ini .
+COPY packages/api/alembic alembic
 
 RUN uv sync --no-dev
 
