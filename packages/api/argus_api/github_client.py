@@ -20,7 +20,7 @@ async def set_commit_status(
     state: CommitState,
     description: str,
     target_url: str = "",
-) -> None:
+) -> bool:
     url = f"{GH_API}/repos/{repo_full_name}/statuses/{sha}"
     payload: dict = {
         "state": state,
@@ -39,6 +39,9 @@ async def set_commit_status(
         )
         if resp.status_code not in (200, 201):
             logger.warning("commit status post failed: %s %s", resp.status_code, resp.text[:200])
+            return False
+        logger.info("commit status set: %s on %s/%s", state, repo_full_name, sha[:7])
+        return True
 
 
 async def post_pr_review(
@@ -48,7 +51,7 @@ async def post_pr_review(
     commit_id: str,
     findings: list[Finding],
     score: int,
-) -> None:
+) -> bool:
     summary = _build_summary(findings, score)
     event = "COMMENT"
 
@@ -87,6 +90,9 @@ async def post_pr_review(
             logger.warning("PR review post failed: %s %s", resp.status_code, resp.text[:300])
             # Fall back to a plain comment with no inline annotations
             await _post_plain_comment(client, token, repo_full_name, pr_number, summary)
+            return False
+        logger.info("PR review posted: %s#%d score=%d", repo_full_name, pr_number, score)
+        return True
 
 
 async def _post_plain_comment(
