@@ -25,7 +25,12 @@ class Review(Base):
     total_findings: Mapped[int] = mapped_column(default=0)
     started_at: Mapped[datetime | None]
     completed_at: Mapped[datetime | None]
+    github_comment_status: Mapped[str | None] = mapped_column(String(20))
 
     repository: Mapped["Repository"] = relationship("Repository", back_populates="reviews")
     triggered_by_user: Mapped["User | None"] = relationship("User", back_populates="triggered_reviews")
     findings: Mapped[list["Finding"]] = relationship("Finding", back_populates="review", cascade="all, delete-orphan")
+
+    @property
+    def repo_full_name(self) -> str | None:
+        return self.repository.full_name if self.repository else None

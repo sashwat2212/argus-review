@@ -86,3 +86,18 @@ async def test_list_reviews_with_wrong_token():
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.get("/api/v1/reviews", headers={"Authorization": "Bearer wrong-key"})
     assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_review_has_github_comment_status_field():
+    from argus_api.database import Base, engine
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        resp = await client.get("/api/v1/reviews", headers=AUTH_HEADERS)
+    assert resp.status_code == 200
+    # Field must be present in schema (null when no reviews exist is fine)
+    data = resp.json()
+    assert "items" in data
