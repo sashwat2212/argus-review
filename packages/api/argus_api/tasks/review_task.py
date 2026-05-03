@@ -125,20 +125,35 @@ async def _async_run_review(
         pr_number = db_review.pr_number
         await session.commit()
 
-    if token and head_sha and repo_full_name and pr_number:
-        await post_pr_review(
-            token=token,
-            repo_full_name=repo_full_name,
-            pr_number=pr_number,
-            commit_id=head_sha,
-            findings=result.findings,
-            score=result.score,
-        )
-        commit_state = "success" if result.score >= 70 else "failure"
-        commit_desc = (
-            f"Score {result.score}/100 — {len(result.findings)} finding(s)"
-        )
-        await set_commit_status(token, repo_full_name, head_sha, commit_state, commit_desc)
+    if not token:
+        logger.info("GITHUB_TOKEN not set — skipping GitHub posting for review %s", review_id)
+        await _update_review_status(review_id, "completed", github_comment_status="skipped")
+        return
+
+    if not (head_sha and repo_full_name and pr_number):
+        logger.info("Missing PR metadata — skipping GitHub posting for review %s", review_id)
+        await _update_review_status(review_id, "completed", github_comment_status="skipped")
+        return
+
+    review_ok = await post_pr_review(
+        token=token,
+        repo_full_name=repo_full_name,
+        pr_number=pr_number,
+        commit_id=head_sha,
+        findings=result.findings,
+        score=result.score,
+    )
+    logger.info("post_pr_review result: %s for review %s", review_ok, review_id)
+
+    commit_state = "success" if result.score >= 70 else "failure"
+    commit_desc = f"Score {result.score}/100 — {len(result.findings)} finding(s)"
+    status_ok = await set_commit_status(
+        token, repo_full_name, head_sha, commit_state, commit_desc
+    )
+    logger.info("set_commit_status result: %s for review %s", status_ok, review_id)
+
+    gh_status = "success" if (review_ok and status_ok) else "failed"
+    await _update_review_status(review_id, "completed", github_comment_status=gh_status)
 
 
 async def _update_review_status(review_id: str, status: str, **kwargs: object) -> None:
