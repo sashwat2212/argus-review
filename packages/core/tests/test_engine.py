@@ -93,3 +93,38 @@ def test_deduplicate_keeps_different_categories():
 
 def test_deduplicate_empty():
     assert _deduplicate([]) == []
+
+
+def test_core_config_default_max_concurrent_chunks():
+    config = CoreConfig()
+    assert config.max_concurrent_chunks == 3
+
+
+def test_core_config_custom_max_concurrent_chunks():
+    config = CoreConfig(max_concurrent_chunks=5)
+    assert config.max_concurrent_chunks == 5
+
+
+def test_review_state_has_annotated_reducers():
+    """Verify ReviewState fields use add reducer so parallel Send nodes accumulate correctly."""
+    from typing import get_type_hints, get_args, get_origin, Annotated
+    from operator import add
+    from argus_core.models import ReviewState
+
+    hints = get_type_hints(ReviewState, include_extras=True)
+
+    for field in ("quality_findings", "security_findings", "errors"):
+        hint = hints[field]
+        assert get_origin(hint) is Annotated, f"{field} must be Annotated"
+        args = get_args(hint)
+        assert args[1] is add, f"{field} reducer must be operator.add"
+
+
+def test_chunk_state_exists():
+    from argus_core.models import ChunkState
+    from argus_core.models import DiffChunk
+    cs: ChunkState = {"chunk": DiffChunk(
+        file_path="f.py", language="python",
+        lines=["+x=1"], start_line=1, end_line=1,
+    )}
+    assert cs["chunk"].file_path == "f.py"

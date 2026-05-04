@@ -14,6 +14,7 @@ class CoreConfig(BaseSettings):
     anthropic_api_key: str | None = None
     anthropic_model: str = "claude-sonnet-4-6"
     max_chunk_lines: int = 150
+    max_concurrent_chunks: int = 3
 
     def effective_backend(self) -> Literal["ollama", "anthropic"]:
         """Use explicit backend setting; only auto-select anthropic if explicitly configured."""
