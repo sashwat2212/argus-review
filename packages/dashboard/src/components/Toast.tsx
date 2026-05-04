@@ -1,4 +1,4 @@
-import { createContext, useCallback, useState } from 'react';
+import { createContext, useCallback, useRef, useState } from 'react';
 
 interface Toast {
   id: number;
@@ -20,10 +20,10 @@ interface Props { children: React.ReactNode }
 
 export function ToastProvider({ children }: Props) {
   const [toasts, setToasts] = useState<Toast[]>([]);
-  let nextId = 0;
+  const nextId = useRef(0);
 
   const addToast = useCallback((message: string, type: 'success' | 'error') => {
-    const id = ++nextId;
+    const id = ++nextId.current;
     setToasts(prev => [...prev.slice(-2), { id, message, type }]);
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));

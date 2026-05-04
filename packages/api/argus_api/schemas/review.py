@@ -23,6 +23,8 @@ class ReviewOut(BaseModel):
     total_findings: int
     started_at: datetime | None
     completed_at: datetime | None
+    github_comment_status: str | None = None
+    repo_full_name: str | None = None
     findings: list[FindingOut] = []
 
 
@@ -31,6 +33,11 @@ class ReviewListOut(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class ReviewRetryOut(BaseModel):
+    review_id: uuid.UUID
+    status: str
 
 
 class OverviewStats(BaseModel):
