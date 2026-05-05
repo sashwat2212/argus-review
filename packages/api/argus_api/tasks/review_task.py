@@ -122,6 +122,7 @@ async def _async_run_review(
         db_review.score = result.score
         db_review.total_findings = len(result.findings)
         db_review.completed_at = datetime.utcnow()
+        db_review.raw_diff = raw_diff
         pr_number = db_review.pr_number
         await session.commit()
 

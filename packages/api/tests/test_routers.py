@@ -200,3 +200,46 @@ async def test_retry_review_not_found():
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.post(f"/api/v1/reviews/{uuid.uuid4()}/retry", headers=AUTH_HEADERS)
     assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_review_out_includes_raw_diff():
+    from argus_api.database import AsyncSessionLocal, Base, engine
+    from argus_api.models.organization import Organization
+    from argus_api.models.repository import Repository
+    from argus_api.models.review import Review as ReviewModel
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
+
+    raw = "diff --git a/foo.py b/foo.py\n--- a/foo.py\n+++ b/foo.py\n+new line\n"
+    async with AsyncSessionLocal() as session:
+        org = Organization(name="difforg", github_org_login="difforg")
+        session.add(org)
+        await session.flush()
+        repo = Repository(
+            org_id=org.id,
+            github_repo_id="11111",
+            full_name="difforg/repo",
+            default_branch="main",
+        )
+        session.add(repo)
+        await session.flush()
+        review = ReviewModel(
+            repo_id=repo.id,
+            trigger_type="webhook",
+            pr_number=10,
+            pr_title="Diff PR",
+            status="completed",
+            raw_diff=raw,
+        )
+        session.add(review)
+        await session.commit()
+        review_id = str(review.id)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        resp = await client.get(f"/api/v1/reviews/{review_id}", headers=AUTH_HEADERS)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["raw_diff"] == raw

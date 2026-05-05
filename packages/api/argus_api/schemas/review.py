@@ -24,6 +24,7 @@ class ReviewOut(BaseModel):
     started_at: datetime | None
     completed_at: datetime | None
     github_comment_status: str | None = None
+    raw_diff: str | None = None
     repo_full_name: str | None = None
     findings: list[FindingOut] = []
 
