@@ -1,14 +1,22 @@
 import { NavLink } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { analyticsApi } from '../api/analytics';
 
 interface Props { children: React.ReactNode; onLogout: () => void }
 
-const NAV = [
-  { to: '/',             icon: '📊', label: 'Dashboard' },
-  { to: '/reviews',      icon: '🔍', label: 'Reviews'   },
-  { to: '/repositories', icon: '📁', label: 'Repos'     },
-];
-
 export function AppShell({ children, onLogout }: Props) {
+  const { data: overview } = useQuery({
+    queryKey: ['analytics', 'overview'],
+    queryFn: analyticsApi.overview,
+    refetchInterval: 30_000,
+  });
+
+  const NAV = [
+    { to: '/',             icon: '📊', label: 'Dashboard',    count: null as number | null },
+    { to: '/reviews',      icon: '🔍', label: 'Reviews',      count: overview?.total_reviews ?? null },
+    { to: '/repositories', icon: '📁', label: 'Repos',        count: null as number | null },
+  ];
+
   return (
     <div className="flex h-screen bg-gray-950 overflow-hidden">
       <aside className="w-56 flex-shrink-0 bg-gray-900 border-r border-gray-800 flex flex-col">
@@ -22,7 +30,7 @@ export function AppShell({ children, onLogout }: Props) {
           </div>
         </div>
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {NAV.map(({ to, icon, label }) => (
+          {NAV.map(({ to, icon, label, count }) => (
             <NavLink
               key={to}
               to={to}
@@ -34,7 +42,12 @@ export function AppShell({ children, onLogout }: Props) {
               }
             >
               <span>{icon}</span>
-              {label}
+              <span className="flex-1">{label}</span>
+              {count !== null && (
+                <span className="bg-gray-700 text-gray-300 text-xs rounded-full px-2 py-0.5">
+                  {count}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>

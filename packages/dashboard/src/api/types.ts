@@ -1,5 +1,6 @@
 export type Severity = 'critical' | 'high' | 'medium' | 'low' | 'info';
 export type ReviewStatus = 'pending' | 'running' | 'completed' | 'failed';
+export type GHStatus = 'success' | 'failed' | 'skipped' | 'pending' | null;
 
 export interface Finding {
   id: string;
@@ -31,6 +32,8 @@ export interface Review {
   total_findings: number;
   started_at: string | null;
   completed_at: string | null;
+  github_comment_status: GHStatus;
+  repo_full_name: string | null;
   findings: Finding[];
 }
 
@@ -39,6 +42,11 @@ export interface ReviewListOut {
   total: number;
   page: number;
   page_size: number;
+}
+
+export interface ReviewRetryOut {
+  review_id: string;
+  status: string;
 }
 
 export interface OverviewStats {

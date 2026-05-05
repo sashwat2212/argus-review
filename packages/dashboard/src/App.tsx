@@ -7,6 +7,8 @@ import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ReviewsPage } from './pages/ReviewsPage';
 import { RepositoriesPage } from './pages/RepositoriesPage';
+import { ToastProvider } from './components/Toast';
+import { PageTransition } from './components/PageTransition';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 5_000, retry: 1 } },
@@ -27,15 +29,17 @@ export function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <AppShell onLogout={handleLogout}>
-          <Routes>
-            <Route path="/"             element={<DashboardPage />} />
-            <Route path="/reviews"      element={<ReviewsPage />} />
-            <Route path="/repositories" element={<RepositoriesPage />} />
-          </Routes>
-        </AppShell>
-      </BrowserRouter>
+      <ToastProvider>
+        <BrowserRouter>
+          <AppShell onLogout={handleLogout}>
+            <Routes>
+              <Route path="/"             element={<PageTransition><DashboardPage /></PageTransition>} />
+              <Route path="/reviews"      element={<PageTransition><ReviewsPage /></PageTransition>} />
+              <Route path="/repositories" element={<PageTransition><RepositoriesPage /></PageTransition>} />
+            </Routes>
+          </AppShell>
+        </BrowserRouter>
+      </ToastProvider>
     </QueryClientProvider>
   );
 }

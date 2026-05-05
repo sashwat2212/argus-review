@@ -13,7 +13,7 @@ class ReviewEngine:
     def __init__(self, config: CoreConfig | None = None) -> None:
         self.config = config or CoreConfig()
         llm = get_llm(self.config)
-        self.graph = build_review_graph(llm)
+        self.graph = build_review_graph(llm, self.config)
 
     async def review_diff(self, raw_diff: str) -> ReviewResult:
         """Run the full multi-agent review pipeline on a unified diff string."""

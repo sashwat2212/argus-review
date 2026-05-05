@@ -1,4 +1,4 @@
-import type { Finding, Review, ReviewListOut } from './types';
+import type { Finding, Review, ReviewListOut, ReviewRetryOut } from './types';
 
 const BASE = import.meta.env.VITE_API_URL ?? '';
 const STORAGE_KEY = 'argus_api_key';
@@ -54,4 +54,7 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify({ is_resolved: true }),
     }),
+
+  retryReview: (id: string) =>
+    apiFetch<ReviewRetryOut>(`/api/v1/reviews/${id}/retry`, { method: 'POST' }),
 };
