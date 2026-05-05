@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal, TypedDict
+from operator import add
+from typing import Annotated, Literal, TypedDict
 
 Severity = Literal["critical", "high", "medium", "low", "info"]
 
@@ -56,8 +57,12 @@ class ReviewResult:
 
 class ReviewState(TypedDict):
     diff_chunks: list[DiffChunk]
-    quality_findings: list[Finding]
-    security_findings: list[Finding]
+    quality_findings: Annotated[list[Finding], add]
+    security_findings: Annotated[list[Finding], add]
     synthesis_findings: list[Finding]
-    errors: list[str]
+    errors: Annotated[list[str], add]
+
+
+class ChunkState(TypedDict):
+    chunk: DiffChunk
 
