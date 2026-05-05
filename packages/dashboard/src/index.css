@@ -1,3 +1,68 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ── diff2html dark theme overrides ── */
+.argus-diff .d2h-file-wrapper {
+  background-color: #0d1117;
+  border-color: #21262d;
+  margin-bottom: 0;
+}
+.argus-diff .d2h-file-header {
+  background-color: #161b22;
+  border-color: #21262d;
+  color: #e6edf3;
+}
+.argus-diff .d2h-code-wrapper,
+.argus-diff table {
+  background-color: #0d1117;
+  width: 100%;
+}
+.argus-diff td.d2h-code-linenumber {
+  background-color: #0d1117;
+  border-color: #21262d;
+  color: #484f58;
+}
+.argus-diff td.d2h-code-side-linenumber {
+  background-color: #0d1117;
+  border-color: #21262d;
+  color: #484f58;
+}
+.argus-diff .d2h-code-line,
+.argus-diff td.d2h-code-side-line {
+  color: #e6edf3;
+  background-color: #0d1117;
+}
+.argus-diff tr.d2h-ins td {
+  background-color: #0d2818;
+  color: #7ee787;
+}
+.argus-diff tr.d2h-ins td.d2h-code-linenumber {
+  background-color: #0d2818;
+  border-color: #2ea043;
+}
+.argus-diff tr.d2h-del td {
+  background-color: #3d0f0f;
+  color: #ffa198;
+}
+.argus-diff tr.d2h-del td.d2h-code-linenumber {
+  background-color: #3d0f0f;
+  border-color: #f85149;
+}
+.argus-diff tr.d2h-info td {
+  background-color: #1c2128;
+  color: #8b949e;
+  border-color: #21262d;
+}
+.argus-diff .d2h-tag {
+  background-color: #161b22;
+  color: #58a6ff;
+  border-color: #21262d;
+}
+
+/* Finding highlight */
+.argus-diff tr.argus-highlight td {
+  background-color: rgba(245, 158, 11, 0.15) !important;
+  border-top: 1px solid #d97706 !important;
+  border-bottom: 1px solid #d97706 !important;
+}
