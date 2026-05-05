@@ -35,6 +35,7 @@ export interface Review {
   github_comment_status: GHStatus;
   repo_full_name: string | null;
   findings: Finding[];
+  raw_diff: string | null;
 }
 
 export interface ReviewListOut {
