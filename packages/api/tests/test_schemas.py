@@ -62,3 +62,46 @@ def test_review_list_out():
     out = ReviewListOut(**data)
     assert out.total == 1
     assert out.items[0].score == 85
+
+
+def test_review_out_includes_raw_diff():
+    import uuid
+    data = {
+        "id": uuid.uuid4(),
+        "repo_id": uuid.uuid4(),
+        "trigger_type": "webhook",
+        "pr_number": 1,
+        "pr_title": "Test",
+        "base_sha": None,
+        "head_sha": None,
+        "status": "completed",
+        "score": 85,
+        "total_findings": 0,
+        "started_at": None,
+        "completed_at": None,
+        "raw_diff": "diff --git a/foo.py b/foo.py\n+added\n",
+        "findings": [],
+    }
+    out = ReviewOut(**data)
+    assert out.raw_diff == data["raw_diff"]
+
+
+def test_review_out_raw_diff_defaults_to_none():
+    import uuid
+    data = {
+        "id": uuid.uuid4(),
+        "repo_id": uuid.uuid4(),
+        "trigger_type": "webhook",
+        "pr_number": None,
+        "pr_title": None,
+        "base_sha": None,
+        "head_sha": None,
+        "status": "pending",
+        "score": None,
+        "total_findings": 0,
+        "started_at": None,
+        "completed_at": None,
+        "findings": [],
+    }
+    out = ReviewOut(**data)
+    assert out.raw_diff is None
