@@ -775,7 +775,6 @@ async def _merge_group(group: list[Finding], llm: BaseChatModel) -> list[Finding
     or all original findings if different root causes or LLM fails.
     The third+ findings in a group always pass through unchanged.
     """
-    from argus_core.prompts.synthesis import build_merge_prompt
 
     ordered = sorted(
         group,
