@@ -6,6 +6,7 @@ import { StatusBadge } from './StatusBadge';
 import { GitHubStatusBadge } from './GitHubStatusBadge';
 import { SkeletonFinding } from './Skeleton';
 import { useToast } from '../hooks/useToast';
+import { DiffPanel } from './DiffPanel';
 import type { Finding } from '../api/types';
 
 const SEVERITY_ICON: Record<string, string> = {
@@ -121,8 +122,9 @@ export function ReviewDetail({ reviewId, onBack }: Props) {
       )}
 
       {data.findings.length > 0 && (
-        <div className="flex gap-4 flex-1 min-h-0 lg:flex-row flex-col">
-          <div className="lg:w-2/5 overflow-y-auto space-y-1 pr-1">
+        <div className="flex gap-3 flex-1 min-h-0 lg:flex-row flex-col">
+          {/* Panel 1 — findings list */}
+          <div className="lg:w-1/4 overflow-y-auto space-y-1 pr-1 shrink-0">
             {data.findings.map(f => (
               <button
                 key={f.id}
@@ -144,7 +146,13 @@ export function ReviewDetail({ reviewId, onBack }: Props) {
             ))}
           </div>
 
-          <div className="lg:w-3/5 overflow-y-auto">
+          {/* Panel 2 — diff viewer */}
+          <div className="lg:w-1/2 overflow-y-auto border border-gray-800 rounded-lg min-h-0">
+            <DiffPanel rawDiff={data.raw_diff} finding={displayFinding} />
+          </div>
+
+          {/* Panel 3 — finding detail */}
+          <div className="lg:w-1/4 overflow-y-auto shrink-0">
             {displayFinding ? (
               <FindingDetail finding={displayFinding} reviewId={reviewId} />
             ) : (
