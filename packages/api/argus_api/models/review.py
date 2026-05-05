@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from argus_api.database import Base
@@ -26,6 +26,7 @@ class Review(Base):
     started_at: Mapped[datetime | None]
     completed_at: Mapped[datetime | None]
     github_comment_status: Mapped[str | None] = mapped_column(String(20))
+    raw_diff: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     repository: Mapped["Repository"] = relationship("Repository", back_populates="reviews")
     triggered_by_user: Mapped["User | None"] = relationship("User", back_populates="triggered_reviews")

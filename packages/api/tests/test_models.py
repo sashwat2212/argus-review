@@ -98,3 +98,30 @@ async def test_create_review_and_finding(session: AsyncSession):
 
     assert finding.id is not None
     assert finding.is_resolved is False
+
+
+@pytest.mark.asyncio
+async def test_review_stores_raw_diff(session: AsyncSession):
+    org = Organization(name="diff-org", github_org_login="diff-org")
+    session.add(org)
+    await session.flush()
+
+    repo = Repository(
+        org_id=org.id,
+        github_repo_id="77777",
+        full_name="diff-org/repo",
+    )
+    session.add(repo)
+    await session.flush()
+
+    raw = "diff --git a/foo.py b/foo.py\n--- a/foo.py\n+++ b/foo.py\n+new line\n"
+    review = Review(
+        repo_id=repo.id,
+        pr_number=5,
+        status="completed",
+        raw_diff=raw,
+    )
+    session.add(review)
+    await session.commit()
+
+    assert review.raw_diff == raw
