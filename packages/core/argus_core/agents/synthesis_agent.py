@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
@@ -11,30 +12,28 @@ from argus_core.models import Finding, ReviewState, SEVERITY_ORDER
 logger = logging.getLogger(__name__)
 
 
-async def run_synthesis_agent(state: ReviewState, _llm: object) -> dict:
-    """Merge quality + security findings and deduplicate."""
+async def run_synthesis_agent(state: ReviewState, llm: BaseChatModel) -> dict:
+    """Merge quality + security findings using semantic overlap deduplication."""
     all_findings = state["quality_findings"] + state["security_findings"]
-    deduplicated = _deduplicate(all_findings)
-    return {**state, "synthesis_findings": deduplicated}
 
+    if not all_findings:
+        return {**state, "synthesis_findings": []}
 
-def _deduplicate(findings: list[Finding]) -> list[Finding]:
-    sorted_findings = sorted(
-        findings,
+    groups, solos = _find_overlap_groups(all_findings)
+
+    # Resolve each overlap group concurrently — each needs one LLM call
+    merged_lists = await asyncio.gather(*[_merge_group(g, llm) for g in groups])
+
+    result: list[Finding] = list(solos)
+    for lst in merged_lists:
+        result.extend(lst)
+
+    result.sort(
         key=lambda f: (SEVERITY_ORDER.get(f.severity, 0), f.confidence),
         reverse=True,
     )
 
-    seen: set[tuple[str, int, str]] = set()
-    result: list[Finding] = []
-
-    for f in sorted_findings:
-        key = (f.file_path, f.line_start // 5, f.category)
-        if key not in seen:
-            seen.add(key)
-            result.append(f)
-
-    return result
+    return {**state, "synthesis_findings": result}
 
 
 def _find_overlap_groups(

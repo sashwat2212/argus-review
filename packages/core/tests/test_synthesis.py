@@ -215,3 +215,133 @@ async def test_merge_group_group_of_three_merges_top_two_keeps_third():
     assert any(f.severity == "low" for f in result)
     # LLM called exactly once (for top-2 only)
     assert mock_llm.ainvoke.call_count == 1
+
+
+# ---------------------------------------------------------------------------
+# run_synthesis_agent integration
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_run_synthesis_agent_empty_findings():
+    from argus_core.agents.synthesis_agent import run_synthesis_agent
+
+    state = {
+        "diff_chunks": [],
+        "quality_findings": [],
+        "security_findings": [],
+        "synthesis_findings": [],
+        "errors": [],
+    }
+    result = await run_synthesis_agent(state, MagicMock())
+    assert result["synthesis_findings"] == []
+
+
+@pytest.mark.asyncio
+async def test_run_synthesis_agent_solos_pass_through():
+    """Non-overlapping findings from both agents all survive unchanged."""
+    from argus_core.agents.synthesis_agent import run_synthesis_agent
+
+    f1 = _make_finding(file_path="a.py", line_start=1, line_end=5, agent="quality")
+    f2 = _make_finding(file_path="a.py", line_start=50, line_end=60, agent="security")
+    state = {
+        "diff_chunks": [],
+        "quality_findings": [f1],
+        "security_findings": [f2],
+        "synthesis_findings": [],
+        "errors": [],
+    }
+    # LLM should never be called — no overlapping pairs
+    mock_llm = MagicMock()
+    mock_llm.ainvoke = AsyncMock()
+
+    result = await run_synthesis_agent(state, mock_llm)
+
+    assert len(result["synthesis_findings"]) == 2
+    mock_llm.ainvoke.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_run_synthesis_agent_merges_overlapping_same_root_cause():
+    """Two overlapping findings with same root cause collapse to one synthesis finding."""
+    import json
+    from argus_core.agents.synthesis_agent import run_synthesis_agent
+
+    f1 = _make_finding(file_path="a.py", line_start=10, line_end=20,
+                       severity="high", agent="security", title="SQL Injection")
+    f2 = _make_finding(file_path="a.py", line_start=15, line_end=25,
+                       severity="medium", agent="quality", title="Unsafe Format")
+
+    mock_llm = MagicMock()
+    mock_llm.ainvoke = AsyncMock(return_value=MagicMock(content=json.dumps({
+        "same_root_cause": True,
+        "merged": {
+            "title": "Merged finding",
+            "description": "D",
+            "why_it_matters": "W",
+            "suggested_fix": "F",
+        },
+    })))
+
+    state = {
+        "diff_chunks": [],
+        "quality_findings": [f2],
+        "security_findings": [f1],
+        "synthesis_findings": [],
+        "errors": [],
+    }
+    result = await run_synthesis_agent(state, mock_llm)
+
+    findings = result["synthesis_findings"]
+    assert len(findings) == 1
+    assert findings[0].agent == "synthesis"
+    assert findings[0].title == "Merged finding"
+    assert findings[0].severity == "high"
+
+
+@pytest.mark.asyncio
+async def test_run_synthesis_agent_keeps_both_different_root_cause():
+    """Overlapping findings with different root causes both survive."""
+    import json
+    from argus_core.agents.synthesis_agent import run_synthesis_agent
+
+    f1 = _make_finding(file_path="a.py", line_start=10, line_end=20, agent="security")
+    f2 = _make_finding(file_path="a.py", line_start=15, line_end=25, agent="quality")
+
+    mock_llm = MagicMock()
+    mock_llm.ainvoke = AsyncMock(return_value=MagicMock(content=json.dumps({
+        "same_root_cause": False,
+    })))
+
+    state = {
+        "diff_chunks": [],
+        "quality_findings": [f2],
+        "security_findings": [f1],
+        "synthesis_findings": [],
+        "errors": [],
+    }
+    result = await run_synthesis_agent(state, mock_llm)
+
+    assert len(result["synthesis_findings"]) == 2
+
+
+@pytest.mark.asyncio
+async def test_run_synthesis_agent_sorted_by_severity():
+    """Output is sorted severity-desc, confidence-desc regardless of input order."""
+    from argus_core.agents.synthesis_agent import run_synthesis_agent
+
+    f_low = _make_finding(file_path="a.py", line_start=1, line_end=5,
+                          severity="low", confidence=0.9, agent="quality")
+    f_critical = _make_finding(file_path="b.py", line_start=1, line_end=5,
+                               severity="critical", confidence=0.7, agent="security")
+
+    state = {
+        "diff_chunks": [],
+        "quality_findings": [f_low],
+        "security_findings": [f_critical],
+        "synthesis_findings": [],
+        "errors": [],
+    }
+    result = await run_synthesis_agent(state, MagicMock())
+    findings = result["synthesis_findings"]
+    assert findings[0].severity == "critical"
+    assert findings[1].severity == "low"
