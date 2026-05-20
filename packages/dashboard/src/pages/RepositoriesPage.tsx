@@ -1,87 +1,133 @@
 import { useQuery } from '@tanstack/react-query';
-import { SkeletonRow } from '../components/Skeleton';
+import { analyticsApi } from '../api/analytics';
+import { SkeletonHealthCard } from '../components/Skeleton';
+import type { RepositoryHealthItem } from '../api/types';
 
-const BASE = import.meta.env.VITE_API_URL ?? '';
-
-interface Repo {
-  id: string;
-  full_name: string;
-  default_branch: string;
-  is_active: boolean;
-  created_at: string;
+function timeAgo(iso: string | null): string {
+  if (!iso) return 'Never';
+  const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60_000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
 }
 
-async function fetchRepos(): Promise<Repo[]> {
-  const key = localStorage.getItem('argus_api_key') ?? '';
-  const res = await fetch(`${BASE}/api/v1/repositories`, {
-    headers: { Authorization: `Bearer ${key}` },
-  });
-  if (!res.ok) throw new Error('Failed to fetch repositories');
-  return res.json();
+function ScoreGauge({ score }: { score: number | null }) {
+  const pct = score ?? 0;
+  const color = pct >= 80 ? 'var(--color-emerald)' : pct >= 60 ? 'var(--color-amber)' : 'var(--color-rose)';
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between text-[10px] font-mono">
+        <span className="text-slate-500">Avg Score</span>
+        <span className="font-bold" style={{ color }}>{score != null ? score : '—'}</span>
+      </div>
+      <div className="h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
+        <div
+          className="h-full rounded-full transition-all duration-700"
+          style={{ width: `${pct}%`, background: color }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function RepoInitials({ name }: { name: string }) {
+  const parts = name.split('/');
+  const repo = parts[parts.length - 1] ?? name;
+  const initials = repo.slice(0, 2).toUpperCase();
+  // Stable color from name
+  const colors = ['#6366f1', '#22d3ee', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6', '#ec4899'];
+  const hue = colors[repo.charCodeAt(0) % colors.length];
+  return (
+    <div
+      className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold text-white shrink-0"
+      style={{ background: `${hue}22`, border: `1px solid ${hue}40`, color: hue }}
+    >
+      {initials}
+    </div>
+  );
+}
+
+function RepoCard({ repo }: { repo: RepositoryHealthItem }) {
+  return (
+    <div className="rounded-2xl border border-white/5 p-5 space-y-4 hover:border-white/10 transition-all group" style={{ background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(8px)' }}>
+      {/* Header */}
+      <div className="flex items-start gap-3">
+        <RepoInitials name={repo.full_name} />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-slate-200 group-hover:text-white transition-colors truncate">
+            {repo.full_name.split('/')[1] ?? repo.full_name}
+          </p>
+          <p className="text-[10px] text-slate-500 font-mono truncate">{repo.full_name}</p>
+        </div>
+        <span className="text-[9px] px-2 py-0.5 rounded-full border font-mono uppercase tracking-wider text-emerald-400 border-emerald-500/20 bg-emerald-950/20 shrink-0">
+          Active
+        </span>
+      </div>
+
+      {/* Score gauge */}
+      <ScoreGauge score={repo.avg_score} />
+
+      {/* Stats row */}
+      <div className="grid grid-cols-3 gap-2 pt-1 border-t border-white/[0.04]">
+        <div className="text-center">
+          <p className="text-sm font-bold text-white font-mono">{repo.total_reviews}</p>
+          <p className="text-[9px] text-slate-600 uppercase tracking-wider mt-0.5">Reviews</p>
+        </div>
+        <div className="text-center border-x border-white/[0.04]">
+          <p className={`text-sm font-bold font-mono ${repo.open_findings > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+            {repo.open_findings}
+          </p>
+          <p className="text-[9px] text-slate-600 uppercase tracking-wider mt-0.5">Open</p>
+        </div>
+        <div className="text-center">
+          <p className="text-[11px] font-semibold text-slate-400 font-mono">{timeAgo(repo.last_review_at)}</p>
+          <p className="text-[9px] text-slate-600 uppercase tracking-wider mt-0.5">Last run</p>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function RepositoriesPage() {
-  const { data, isLoading, error } = useQuery({ queryKey: ['repositories'], queryFn: fetchRepos });
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['analytics', 'repository-health'],
+    queryFn: analyticsApi.repositoryHealth,
+    refetchInterval: 60_000,
+  });
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Repositories</h1>
-        <p className="text-sm text-gray-400 mt-0.5">All monitored repositories</p>
+    <div className="p-6 max-w-[1400px] mx-auto space-y-5">
+      <div>
+        <h1 className="text-[13px] font-bold uppercase tracking-widest text-white">Repositories</h1>
+        <p className="text-[11px] text-slate-500 mt-0.5">Health overview for all monitored repositories</p>
       </div>
 
       {error && (
-        <div className="p-4 bg-red-500/10 border border-red-800 rounded-xl text-red-400 text-sm mb-4">
-          Failed to load repositories.
+        <div className="p-4 rounded-xl border border-rose-500/20 bg-rose-950/10 text-rose-400 text-xs">
+          Failed to load repository health data.
         </div>
       )}
 
       {!isLoading && data?.length === 0 && (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-12 text-center">
-          <div className="text-4xl mb-4">📁</div>
-          <h2 className="text-lg font-semibold text-white mb-2">No repositories yet</h2>
-          <p className="text-sm text-gray-400 mb-4">Repositories are registered automatically when GitHub sends a webhook event.</p>
-          <a href="/docs/self-hosting.md" className="text-blue-400 text-sm hover:underline">View webhook setup guide →</a>
+        <div className="rounded-2xl border border-white/5 p-16 text-center" style={{ background: 'rgba(15,23,42,0.3)' }}>
+          <div className="w-14 h-14 rounded-2xl border border-white/5 flex items-center justify-center text-2xl mx-auto mb-4">
+            📁
+          </div>
+          <h2 className="text-sm font-bold text-white tracking-tight mb-1">No repositories yet</h2>
+          <p className="text-xs text-slate-500 max-w-sm mx-auto">
+            Repositories are registered automatically when your GitHub webhook sends the first event.
+          </p>
         </div>
       )}
 
-      {(isLoading || (data?.length ?? 0) > 0) && (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-800">
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">Repository</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">Default Branch</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">Added</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-800">
-              {isLoading
-                ? Array.from({ length: 3 }).map((_, i) => (
-                    <tr key={i}>
-                      <td colSpan={4} className="px-4 py-1">
-                        <SkeletonRow />
-                      </td>
-                    </tr>
-                  ))
-                : data!.map(repo => (
-                    <tr key={repo.id} className="hover:bg-gray-800/50 transition-colors">
-                      <td className="px-4 py-3 font-medium text-white">{repo.full_name}</td>
-                      <td className="px-4 py-3 text-gray-400 font-mono text-xs">{repo.default_branch}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${repo.is_active ? 'bg-green-500/10 text-green-400' : 'bg-gray-700 text-gray-400'}`}>
-                          {repo.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-gray-400 text-xs">{new Date(repo.created_at).toLocaleDateString()}</td>
-                    </tr>
-                  ))
-              }
-            </tbody>
-          </table>
-        </div>
-      )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {isLoading
+          ? Array.from({ length: 6 }).map((_, i) => <SkeletonHealthCard key={i} />)
+          : (data ?? []).map(repo => <RepoCard key={repo.repo_id} repo={repo} />)
+        }
+      </div>
     </div>
   );
 }
