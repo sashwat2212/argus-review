@@ -1,4 +1,4 @@
-import type { Finding, Review, ReviewListOut, ReviewRetryOut } from './types';
+import type { Finding, Review, ReviewListOut, ReviewRetryOut, ReviewStatsOut } from './types';
 
 const BASE = import.meta.env.VITE_API_URL ?? '';
 const STORAGE_KEY = 'argus_api_key';
@@ -49,12 +49,21 @@ export const api = {
   getReview: (id: string) =>
     apiFetch<Review>(`/api/v1/reviews/${id}`),
 
+  getReviewStats: (id: string) =>
+    apiFetch<ReviewStatsOut>(`/api/v1/reviews/${id}/stats`),
+
   resolveFinding: (reviewId: string, findingId: string) =>
     apiFetch<Finding>(`/api/v1/reviews/${reviewId}/findings/${findingId}`, {
       method: 'PATCH',
       body: JSON.stringify({ is_resolved: true }),
     }),
 
+  resolveAll: (reviewId: string) =>
+    apiFetch<{ status: string }>(`/api/v1/reviews/${reviewId}/findings/resolve-all`, {
+      method: 'POST',
+    }),
+
   retryReview: (id: string) =>
     apiFetch<ReviewRetryOut>(`/api/v1/reviews/${id}/retry`, { method: 'POST' }),
 };
+

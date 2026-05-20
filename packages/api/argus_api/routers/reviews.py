@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -15,7 +15,14 @@ from argus_api.models.finding import Finding
 from argus_api.models.repository import Repository
 from argus_api.models.review import Review
 from argus_api.schemas.finding import FindingOut, FindingPatch
-from argus_api.schemas.review import ReviewListOut, ReviewOut, ReviewRetryOut
+from argus_api.schemas.review import (
+    AgentBreakdownItem,
+    ReviewListOut,
+    ReviewOut,
+    ReviewRetryOut,
+    ReviewStatsOut,
+    SeverityCount,
+)
 
 try:
     from argus_api.tasks.review_task import run_review_task
@@ -145,3 +152,82 @@ async def patch_finding(
     await session.commit()
     await session.refresh(finding)
     return finding
+
+
+@router.get("/{review_id}/stats", response_model=ReviewStatsOut)
+@limiter.limit("60/minute")
+async def get_review_stats(
+    request: Request,
+    review_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),
+    _auth: None = Depends(require_api_key),
+) -> ReviewStatsOut:
+    review = (await session.execute(
+        select(Review).where(Review.id == review_id)
+    )).scalar_one_or_none()
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+
+    sev_rows = (await session.execute(
+        select(Finding.severity, func.count().label("cnt"))
+        .where(Finding.review_id == review_id)
+        .group_by(Finding.severity)
+        .order_by(func.count().desc())
+    )).all()
+
+    agent_rows = (await session.execute(
+        select(
+            Finding.agent,
+            func.count().label("total"),
+            func.sum(case((Finding.is_resolved.is_(True), 1), else_=0)).label("resolved"),
+        )
+        .where(Finding.review_id == review_id)
+        .group_by(Finding.agent)
+    )).all()
+
+    total = (await session.execute(
+        select(func.count()).select_from(Finding).where(Finding.review_id == review_id)
+    )).scalar_one()
+    resolved = (await session.execute(
+        select(func.count()).select_from(Finding).where(
+            Finding.review_id == review_id, Finding.is_resolved.is_(True)
+        )
+    )).scalar_one()
+
+    return ReviewStatsOut(
+        severity_breakdown=[SeverityCount(severity=r.severity, count=r.cnt) for r in sev_rows],
+        agent_breakdown=[
+            AgentBreakdownItem(
+                agent=r.agent,
+                total=r.total,
+                resolved=int(r.resolved or 0),
+                resolution_rate=round(int(r.resolved or 0) / r.total, 3) if r.total else 0.0,
+            )
+            for r in agent_rows
+        ],
+        total_findings=total,
+        resolved_findings=resolved,
+    )
+
+
+@router.post("/{review_id}/findings/resolve-all")
+@limiter.limit("20/minute")
+async def resolve_all_findings(
+    request: Request,
+    review_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),
+    _auth: None = Depends(require_api_key),
+) -> dict:
+    review = (await session.execute(
+        select(Review).where(Review.id == review_id)
+    )).scalar_one_or_none()
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+    await session.execute(
+        update(Finding)
+        .where(Finding.review_id == review_id, Finding.is_resolved.is_(False))
+        .values(is_resolved=True)
+    )
+    await session.commit()
+    return {"status": "ok", "review_id": str(review_id)}
+

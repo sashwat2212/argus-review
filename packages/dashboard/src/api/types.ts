@@ -74,3 +74,51 @@ export interface CategoryCount {
   category: string;
   count: number;
 }
+
+// ── v2 types ───────────────────────────────────────────────
+
+export interface RepositoryHealthItem {
+  repo_id: string;
+  full_name: string;
+  total_reviews: number;
+  avg_score: number | null;
+  open_findings: number;
+  last_review_at: string | null;
+}
+
+export interface AgentBreakdownItem {
+  agent: string;
+  total: number;
+  resolved: number;
+  resolution_rate: number;
+}
+
+export interface VelocityPoint {
+  date: string;
+  opened: number;
+  resolved: number;
+}
+
+export interface ScoreDistributionItem {
+  band: string;
+  count: number;
+}
+
+export interface TopFileItem {
+  file_path: string;
+  count: number;
+}
+
+export interface ReviewDurationStats {
+  avg_seconds: number | null;
+  min_seconds: number | null;
+  max_seconds: number | null;
+}
+
+export interface ReviewStatsOut {
+  severity_breakdown: SeverityCount[];
+  agent_breakdown: AgentBreakdownItem[];
+  total_findings: number;
+  resolved_findings: number;
+}
+
