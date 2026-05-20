@@ -15,3 +15,7 @@ def require_api_key(
 ) -> None:
     if credentials is None or not hmac.compare_digest(credentials.credentials, settings.api_key):
         raise HTTPException(status_code=401, detail="Invalid or missing API key")
+
+
+
+

@@ -66,3 +66,118 @@
   border-top: 1px solid #d97706 !important;
   border-bottom: 1px solid #d97706 !important;
 }
+
+/* ── Premium SaaS Custom Developer Tokens ── */
+
+.bg-slate-radial {
+  background: radial-gradient(circle at 50% 50%, #0f172a 0%, #020617 100%);
+}
+
+.bg-grid-pattern {
+  background-image: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.02) 1px, transparent 0);
+  background-size: 28px 28px;
+}
+
+/* Glassmorphism & High-End Outlines */
+.glass-panel {
+  background-color: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.glass-panel:hover {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Smooth 3D Perspective & Hardware Acceleration */
+.perspective-1000 {
+  perspective: 1000px;
+  transform-style: preserve-3d;
+}
+
+.transform-3d-card {
+  transition: transform 0.15s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.15s ease, border-color 0.2s ease;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+}
+
+/* Delicate SaaS Neon Accent Glows */
+.glow-cyan {
+  box-shadow: 0 0 30px rgba(6, 182, 212, 0.05);
+  border-color: rgba(6, 182, 212, 0.15) !important;
+}
+.glow-cyan:hover {
+  border-color: rgba(6, 182, 212, 0.3) !important;
+}
+
+.glow-violet {
+  box-shadow: 0 0 30px rgba(139, 92, 246, 0.05);
+  border-color: rgba(139, 92, 246, 0.15) !important;
+}
+.glow-violet:hover {
+  border-color: rgba(139, 92, 246, 0.3) !important;
+}
+
+.glow-rose {
+  box-shadow: 0 0 30px rgba(244, 63, 94, 0.05);
+  border-color: rgba(244, 63, 94, 0.15) !important;
+}
+.glow-rose:hover {
+  border-color: rgba(244, 63, 94, 0.3) !important;
+}
+
+.glow-emerald {
+  box-shadow: 0 0 30px rgba(16, 185, 129, 0.05);
+  border-color: rgba(16, 185, 129, 0.15) !important;
+}
+.glow-emerald:hover {
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+/* Slow UI Animation Sequences */
+@keyframes rotate-slow {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.animate-rotate-slow {
+  animation: rotate-slow 40s linear infinite;
+}
+
+@keyframes rotate-slow-reverse {
+  0% { transform: rotate(360deg); }
+  100% { transform: rotate(0deg); }
+}
+
+.animate-rotate-slow-reverse {
+  animation: rotate-slow-reverse 60s linear infinite;
+}
+
+@keyframes scan-line {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+.animate-scan-line {
+  animation: scan-line 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 0.4; }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 3s ease-in-out infinite;
+}
+
