@@ -1,0 +1,92 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: argus
+      POSTGRES_USER: argus
+      POSTGRES_PASSWORD: argus_dev
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U argus"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    entrypoint: ["/bin/sh", "-c", "ollama serve & sleep 5 && ollama pull qwen2.5-coder:3b && wait"]
+
+  api:
+    build:
+      context: .
+      dockerfile: packages/api/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+asyncpg://argus:argus_dev@postgres:5432/argus
+      REDIS_URL: redis://redis:6379/0
+      ARGUS_OLLAMA_BASE_URL: http://ollama:11434
+      ARGUS_LLM_BACKEND: ${ARGUS_LLM_BACKEND:-ollama}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      SECRET_KEY: ${SECRET_KEY:-change-me}
+      ARGUS_API_KEY: ${ARGUS_API_KEY:-argus-dev-key-change-in-prod}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: packages/api/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+asyncpg://argus:argus_dev@postgres:5432/argus
+      REDIS_URL: redis://redis:6379/0
+      ARGUS_OLLAMA_BASE_URL: http://ollama:11434
+      ARGUS_OLLAMA_MODEL: ${ARGUS_OLLAMA_MODEL:-qwen2.5-coder:3b}
+      ARGUS_LLM_BACKEND: ${ARGUS_LLM_BACKEND:-ollama}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      ARGUS_API_KEY: ${ARGUS_API_KEY:-argus-dev-key-change-in-prod}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      celery -A argus_api.tasks.celery_app worker
+      --loglevel=info
+      --concurrency=2
+
+  dashboard:
+    build:
+      context: packages/dashboard
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+  ollama_data:
