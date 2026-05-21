@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
 
 from argus_api.schemas.finding import FindingOut, FindingPatch
-from argus_api.schemas.review import ReviewOut, ReviewListOut
-from argus_api.schemas.repository import RepositoryOut
+from argus_api.schemas.review import ReviewListOut, ReviewOut
 
 
 def test_finding_out_from_dict():

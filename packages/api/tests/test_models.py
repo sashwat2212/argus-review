@@ -1,14 +1,11 @@
 from __future__ import annotations
 
 import asyncio
-import uuid
 
 import pytest
 import pytest_asyncio
+from argus_api.models import Finding, Organization, Repository, Review
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-
-from argus_api.models import Organization, Repository, Review, Finding
-
 
 DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 

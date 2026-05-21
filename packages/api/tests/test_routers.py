@@ -3,9 +3,8 @@ from __future__ import annotations
 import uuid
 
 import pytest
-from httpx import AsyncClient, ASGITransport
-
 from argus_api.main import app
+from httpx import ASGITransport, AsyncClient
 
 AUTH_HEADERS = {"Authorization": "Bearer test-api-key"}
 
@@ -105,11 +104,11 @@ async def test_review_has_github_comment_status_field():
 
 @pytest.mark.asyncio
 async def test_review_out_includes_github_status_and_repo_name():
+
     from argus_api.database import AsyncSessionLocal, Base, engine
     from argus_api.models.organization import Organization
     from argus_api.models.repository import Repository
     from argus_api.models.review import Review as ReviewModel
-    import uuid
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
@@ -149,11 +148,12 @@ async def test_review_out_includes_github_status_and_repo_name():
 
 @pytest.mark.asyncio
 async def test_retry_review_creates_new_review():
+    from unittest.mock import patch
+
     from argus_api.database import AsyncSessionLocal, Base, engine
     from argus_api.models.organization import Organization
     from argus_api.models.repository import Repository
     from argus_api.models.review import Review as ReviewModel
-    from unittest.mock import patch
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)

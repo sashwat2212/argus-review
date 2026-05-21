@@ -5,6 +5,8 @@ import logging
 from datetime import datetime
 
 import httpx
+from argus_core.config import CoreConfig
+from argus_core.engine import ReviewEngine
 from sqlalchemy import select
 
 from argus_api.config import settings
@@ -13,8 +15,6 @@ from argus_api.github_client import post_pr_review, set_commit_status
 from argus_api.models.finding import Finding as FindingModel
 from argus_api.models.review import Review
 from argus_api.tasks.celery_app import celery_app
-from argus_core.config import CoreConfig
-from argus_core.engine import ReviewEngine
 
 logger = logging.getLogger(__name__)
 

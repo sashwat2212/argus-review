@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from argus_api.github_client import post_pr_review, set_commit_status
 from argus_core.models import Finding
 
