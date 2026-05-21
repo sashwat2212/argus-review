@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api, setStoredApiKey } from '../api/client';
-
-interface Props { onSuccess: () => void }
+import { api } from '../api/client';
 
 const BOOT_LOGS = [
   '» [BOOT] Initializing Argus core static analysis engine v1.2.0...',
@@ -14,10 +12,7 @@ const BOOT_LOGS = [
   '» [AWAITING] Authorizing incoming system gateway connection...'
 ];
 
-export function LoginPage({ onSuccess }: Props) {
-  const [key, setKey] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+export function LoginPage() {
   const [logs, setLogs] = useState<string[]>([]);
 
   useEffect(() => {
@@ -33,23 +28,9 @@ export function LoginPage({ onSuccess }: Props) {
     return () => { active = false; };
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-    try {
-      const ok = await api.verifyKey(key.trim());
-      if (ok) {
-        setStoredApiKey(key.trim());
-        onSuccess();
-      } else {
-        setError('Invalid API key. Check your ARGUS_API_KEY in .env.');
-      }
-    } catch {
-      setError('Could not reach the Argus API. Is it running?');
-    } finally {
-      setLoading(false);
-    }
+  const handleGitHubLogin = () => {
+    const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    window.location.href = `${apiBase}/api/v1/auth/github/login`;
   };
 
   return (
@@ -70,53 +51,32 @@ export function LoginPage({ onSuccess }: Props) {
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-1.5">
-                Argus <span className="text-[10px] font-mono py-0.5 px-1.5 rounded bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 uppercase tracking-widest font-normal">v1.2.0</span>
+                Argus <span className="text-[10px] font-mono py-0.5 px-1.5 rounded bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 uppercase tracking-widest font-normal">v2.0.0</span>
               </h1>
               <p className="text-xs text-slate-400 mt-0.5">Automated Code Quality & Security Gate</p>
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">API Key Signature</label>
-              <div className="relative">
-                <input
-                  type="password"
-                  value={key}
-                  onChange={e => setKey(e.target.value)}
-                  placeholder="argus-dev-key-..."
-                  className="w-full bg-slate-950/60 border border-white/5 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all font-mono shadow-inner"
-                  required
-                />
-              </div>
+          <div className="space-y-6">
+            <div className="bg-slate-900/50 border border-white/5 rounded-xl p-4 text-sm text-slate-300 leading-relaxed">
+              Welcome to the new Argus Console. To proceed, please authenticate with your GitHub account. 
+              This will create your personal workspace.
             </div>
 
-            {error && (
-              <div className="flex items-center gap-2 text-xs text-rose-400 bg-rose-500/5 border border-rose-500/10 p-3 rounded-lg animate-pulse-soft">
-                <span>⚠️</span>
-                <p>{error}</p>
-              </div>
-            )}
-
             <button
-              type="submit"
-              disabled={loading || !key.trim()}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:hover:bg-indigo-600 text-white text-sm font-semibold py-3 rounded-xl transition-all shadow-[0_4px_15px_rgba(99,102,241,0.2)] active:scale-[0.98]"
+              onClick={handleGitHubLogin}
+              className="w-full bg-[#24292e] hover:bg-[#2f363d] text-white text-sm font-semibold py-3.5 rounded-xl transition-all shadow-[0_4px_15px_rgba(0,0,0,0.4)] active:scale-[0.98] flex items-center justify-center gap-3 border border-white/10"
             >
-              {loading ? (
-                <div className="flex items-center justify-center gap-2">
-                  <span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-                  Verifying signature...
-                </div>
-              ) : (
-                'Establish Connection'
-              )}
+              <svg height="20" viewBox="0 0 16 16" version="1.1" width="20" aria-hidden="true" fill="currentColor">
+                <path fillRule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
+              </svg>
+              Continue with GitHub
             </button>
-          </form>
+          </div>
 
           <div className="mt-8 pt-5 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-500">
             <span>Authentication Requirement</span>
-            <code className="text-slate-400 font-mono">ARGUS_API_KEY</code>
+            <code className="text-slate-400 font-mono">OAuth 2.0</code>
           </div>
         </div>
 
