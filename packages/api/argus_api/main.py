@@ -12,11 +12,11 @@ from slowapi.middleware import SlowAPIMiddleware
 from argus_api.config import settings
 from argus_api.database import init_db
 from argus_api.limiter import limiter
+from argus_api.routers.analytics import router as analytics_router
 from argus_api.routers.auth import router as auth_router
 from argus_api.routers.health import router as health_router
 from argus_api.routers.repositories import router as repos_router
 from argus_api.routers.reviews import router as reviews_router
-from argus_api.routers.analytics import router as analytics_router
 from argus_api.routers.webhooks import router as webhooks_router
 
 

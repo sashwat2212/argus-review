@@ -1,17 +1,17 @@
 from __future__ import annotations
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Response, Request
+from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi.responses import RedirectResponse
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from argus_api.auth_utils import create_access_token
 from argus_api.config import settings
 from argus_api.database import get_session
-from argus_api.dependencies import require_api_key, get_current_user
-from argus_api.models.user import User
+from argus_api.dependencies import get_current_user, require_api_key
 from argus_api.models.organization import Organization
-from argus_api.auth_utils import create_access_token
+from argus_api.models.user import User
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 

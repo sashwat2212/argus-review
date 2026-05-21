@@ -3,9 +3,10 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Any
 
-from jose import jwt, JWTError
+from jose import JWTError, jwt
 
 from argus_api.config import settings
+
 
 def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = None) -> str:
     to_encode = data.copy()

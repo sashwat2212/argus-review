@@ -26,4 +26,4 @@ class Finding(Base):
     agent: Mapped[str] = mapped_column(String(50))
     is_resolved: Mapped[bool] = mapped_column(default=False)
 
-    review: Mapped["Review"] = relationship("Review", back_populates="findings")
+    review: Mapped[Review] = relationship("Review", back_populates="findings")

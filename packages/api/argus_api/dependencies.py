@@ -2,17 +2,16 @@ from __future__ import annotations
 
 import hmac
 import uuid
-from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from argus_api.auth_utils import verify_token
 from argus_api.config import settings
 from argus_api.database import get_session
 from argus_api.models.user import User
-from argus_api.auth_utils import verify_token
 
 _bearer = HTTPBearer(auto_error=False)
 

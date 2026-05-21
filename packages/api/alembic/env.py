@@ -3,13 +3,11 @@ from __future__ import annotations
 import asyncio
 from logging.config import fileConfig
 
+import argus_api.models  # noqa: F401
 from alembic import context
-from sqlalchemy.ext.asyncio import create_async_engine
-
 from argus_api.config import settings
 from argus_api.database import Base
-
-import argus_api.models  # noqa: F401
+from sqlalchemy.ext.asyncio import create_async_engine
 
 config = context.config
 if config.config_file_name is not None:

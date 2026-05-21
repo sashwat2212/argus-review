@@ -4,7 +4,6 @@ import logging
 from typing import Literal
 
 import httpx
-
 from argus_core.models import Finding
 
 logger = logging.getLogger(__name__)
@@ -121,9 +120,9 @@ def _build_summary(findings: list[Finding], score: int) -> str:
     score_emoji = "✅" if score >= 80 else "⚠️" if score >= 60 else "❌"
     lines = [
         f"## Argus Review {score_emoji}",
-        f"",
+        "",
         f"**Score: {score}/100** | **{len(findings)} finding(s)**",
-        f"",
+        "",
     ]
 
     if counts:

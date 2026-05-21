@@ -21,5 +21,5 @@ class Repository(Base):
     config: Mapped[dict | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
 
-    organization: Mapped["Organization"] = relationship("Organization", back_populates="repositories")
-    reviews: Mapped[list["Review"]] = relationship("Review", back_populates="repository")
+    organization: Mapped[Organization] = relationship("Organization", back_populates="repositories")
+    reviews: Mapped[list[Review]] = relationship("Review", back_populates="repository")
