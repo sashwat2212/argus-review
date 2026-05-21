@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { clearStoredApiKey, getStoredApiKey } from './api/client';
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
+import { api } from './api/client';
 import { AppShell } from './layouts/AppShell';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -14,31 +14,63 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 5_000, retry: 1 } },
 });
 
-export function App() {
-  const [authed, setAuthed] = useState(() => !!getStoredApiKey());
+function AppContent() {
+  const { data: user, isLoading, isError } = useQuery({
+    queryKey: ['me'],
+    queryFn: api.getMe,
+    retry: false,
+  });
 
   const handleLogout = () => {
-    clearStoredApiKey();
+    // To properly logout with HTTPOnly cookies, we'd ideally hit a backend /logout endpoint.
+    // For now, we clear the query cache and redirect.
     queryClient.clear();
-    setAuthed(false);
+    // A trick to clear cookies from frontend if not strictly HttpOnly or we just force reload.
+    // In production we should do: window.location.href = '/api/v1/auth/logout';
+    document.cookie = 'argus_session=; Max-Age=0; path=/';
+    window.location.href = '/login';
   };
 
-  if (!authed) {
-    return <LoginPage onSuccess={() => setAuthed(true)} />;
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center space-y-4">
+        <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+        <p className="text-slate-400 font-mono text-xs animate-pulse">Authenticating with Identity Provider...</p>
+      </div>
+    );
+  }
+
+  // If there's an error (401), or no user, show login page
+  if (isError || !user) {
+    return (
+      <BrowserRouter>
+        <Routes>
+          <Route path="*" element={<LoginPage />} />
+        </Routes>
+      </BrowserRouter>
+    );
   }
 
   return (
+    <BrowserRouter>
+      <AppShell onLogout={handleLogout}>
+        <Routes>
+          <Route path="/"             element={<PageTransition><DashboardPage /></PageTransition>} />
+          <Route path="/reviews"      element={<PageTransition><ReviewsPage /></PageTransition>} />
+          <Route path="/repositories" element={<PageTransition><RepositoriesPage /></PageTransition>} />
+          {/* Catch-all */}
+          <Route path="*"             element={<PageTransition><DashboardPage /></PageTransition>} />
+        </Routes>
+      </AppShell>
+    </BrowserRouter>
+  );
+}
+
+export function App() {
+  return (
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
-        <BrowserRouter>
-          <AppShell onLogout={handleLogout}>
-            <Routes>
-              <Route path="/"             element={<PageTransition><DashboardPage /></PageTransition>} />
-              <Route path="/reviews"      element={<PageTransition><ReviewsPage /></PageTransition>} />
-              <Route path="/repositories" element={<PageTransition><RepositoriesPage /></PageTransition>} />
-            </Routes>
-          </AppShell>
-        </BrowserRouter>
+        <AppContent />
       </ToastProvider>
     </QueryClientProvider>
   );
