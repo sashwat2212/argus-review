@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 from datetime import datetime
 
 import httpx
+import structlog
 from argus_core.config import CoreConfig
 from argus_core.engine import ReviewEngine
 from sqlalchemy import select
@@ -16,7 +16,7 @@ from argus_api.models.finding import Finding as FindingModel
 from argus_api.models.review import Review
 from argus_api.tasks.celery_app import celery_app
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=60)
@@ -29,6 +29,14 @@ def run_review_task(
 ) -> None:
     """Fetch diff, run the review engine, persist findings, post GitHub comments."""
     from argus_api.database import engine
+    
+    log = logger.bind(
+        task_id=self.request.id,
+        review_id=review_id,
+        repo=repo_full_name,
+        head_sha=head_sha
+    )
+    log.info("Starting review task")
 
     try:
         loop = asyncio.new_event_loop()
@@ -40,12 +48,14 @@ def run_review_task(
                     pr_diff_url=pr_diff_url,
                     head_sha=head_sha,
                     repo_full_name=repo_full_name,
+                    log=log,
                 )
             )
         finally:
             loop.run_until_complete(engine.dispose())
             loop.close()
     except Exception as exc:
+        log.error("Task failed, attempting retry or marking failed", exc_info=True)
         try:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
@@ -57,7 +67,7 @@ def run_review_task(
                 loop.run_until_complete(engine.dispose())
                 loop.close()
         except Exception as err:
-            logger.error(f"Failed to mark review {review_id} as failed: {err}")
+            log.error("Failed to mark review as failed", error=str(err))
         raise self.retry(exc=exc)
 
 
@@ -66,6 +76,7 @@ async def _async_run_review(
     pr_diff_url: str,
     head_sha: str,
     repo_full_name: str,
+    log: structlog.BoundLogger,
 ) -> None:
     await _update_review_status(review_id, "running", started_at=datetime.utcnow())
 
@@ -79,10 +90,13 @@ async def _async_run_review(
         "Authorization": f"Bearer {token}",
         "Accept": "application/vnd.github.v3.diff",
     }
+    
+    start_time = datetime.utcnow()
     async with httpx.AsyncClient() as client:
         resp = await client.get(pr_diff_url, headers=diff_headers, follow_redirects=True)
         resp.raise_for_status()
         raw_diff = resp.text
+    log.info("Fetched diff from GitHub", diff_size=len(raw_diff))
 
     core_cfg = CoreConfig(
         llm_backend=settings.argus_llm_backend,  # type: ignore[arg-type]
@@ -92,7 +106,12 @@ async def _async_run_review(
         anthropic_model=settings.argus_anthropic_model,
     )
     engine = ReviewEngine(core_cfg)
+    
+    log.info("Running Review Engine", backend=settings.argus_llm_backend)
+    engine_start = datetime.utcnow()
     result = await engine.review_diff(raw_diff)
+    engine_duration = (datetime.utcnow() - engine_start).total_seconds()
+    log.info("Review Engine completed", duration_sec=engine_duration, score=result.score, total_findings=len(result.findings))
 
     import uuid
 
@@ -125,14 +144,15 @@ async def _async_run_review(
         db_review.raw_diff = raw_diff
         pr_number = db_review.pr_number
         await session.commit()
+    log.info("Saved findings to database")
 
     if not token:
-        logger.info("GITHUB_TOKEN not set — skipping GitHub posting for review %s", review_id)
+        log.info("GITHUB_TOKEN not set — skipping GitHub posting")
         await _update_review_status(review_id, "completed", github_comment_status="skipped")
         return
 
     if not (head_sha and repo_full_name and pr_number):
-        logger.info("Missing PR metadata — skipping GitHub posting for review %s", review_id)
+        log.info("Missing PR metadata — skipping GitHub posting")
         await _update_review_status(review_id, "completed", github_comment_status="skipped")
         return
 
@@ -144,17 +164,20 @@ async def _async_run_review(
         findings=result.findings,
         score=result.score,
     )
-    logger.info("post_pr_review result: %s for review %s", review_ok, review_id)
+    log.info("Posted review to GitHub", review_ok=review_ok)
 
     commit_state = "success" if result.score >= 70 else "failure"
     commit_desc = f"Score {result.score}/100 — {len(result.findings)} finding(s)"
     status_ok = await set_commit_status(
         token, repo_full_name, head_sha, commit_state, commit_desc
     )
-    logger.info("set_commit_status result: %s for review %s", status_ok, review_id)
+    log.info("Set commit status", status_ok=status_ok, commit_state=commit_state)
 
     gh_status = "success" if (review_ok and status_ok) else "failed"
     await _update_review_status(review_id, "completed", github_comment_status=gh_status)
+    
+    total_duration = (datetime.utcnow() - start_time).total_seconds()
+    log.info("Review task completely finished", total_duration_sec=total_duration)
 
 
 async def _update_review_status(review_id: str, status: str, **kwargs: object) -> None:
