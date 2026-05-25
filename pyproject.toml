@@ -24,6 +24,14 @@ target-version = "py311"
 select = ["E", "F", "I", "UP", "B", "SIM"]
 ignore = ["B008"]
 
+[tool.ruff.lint.per-file-ignores]
+# Tests: allow long lines (test strings/fixtures) and nested `with`
+"**/tests/**" = ["E501", "SIM117"]
+# Alembic migrations: allow long column definitions
+"**/alembic/versions/**" = ["E501"]
+# CLI: allow long user-facing strings
+"packages/cli/argus_cli/github_client.py" = ["E501"]
+
 [tool.mypy]
 python_version = "3.11"
 ignore_missing_imports = true

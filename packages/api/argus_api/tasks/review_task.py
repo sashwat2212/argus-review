@@ -61,7 +61,12 @@ def run_review_task(
             asyncio.set_event_loop(loop)
             try:
                 loop.run_until_complete(
-                    _mark_failed(review_id, str(exc), head_sha=head_sha, repo_full_name=repo_full_name)
+                    _mark_failed(
+                        review_id,
+                        str(exc),
+                        head_sha=head_sha,
+                        repo_full_name=repo_full_name,
+                    )
                 )
             finally:
                 loop.run_until_complete(engine.dispose())

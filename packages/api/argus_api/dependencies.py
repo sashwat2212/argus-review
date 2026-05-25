@@ -32,9 +32,7 @@ async def get_current_user(
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    # If it's the static API key, we should ideally still allow it for automated scripts,
-    # but since this returns a User, we need a special 'bot' user or we just reject static keys here.
-    # For now, let's reject static keys in `get_current_user` and only allow JWTs.
+    # Static API keys are not supported for user endpoints — JWTs only.
     if token == settings.api_key:
         # Quick hack for backward compatibility with webhook tests if needed,
         # but webhooks should have their own dependency.
@@ -50,8 +48,8 @@ async def get_current_user(
 
     try:
         user_id = uuid.UUID(user_id_str)
-    except ValueError:
-        raise HTTPException(status_code=401, detail="Invalid user ID in token")
+    except ValueError as err:
+        raise HTTPException(status_code=401, detail="Invalid user ID in token") from err
 
     result = await session.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
