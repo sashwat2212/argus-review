@@ -1,4 +1,3 @@
-import pytest
 from argus_core.diff_parser import parse_diff
 
 SAMPLE_PYTHON_DIFF = """\

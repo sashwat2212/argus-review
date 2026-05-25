@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import json
-
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from argus_core.models import Finding, SEVERITY_ORDER
+import pytest
+from argus_core.models import Finding
 
 
 def _make_finding(**kwargs) -> Finding:
@@ -110,7 +109,6 @@ def test_overlap_three_findings_two_overlap_one_solo():
 
 @pytest.mark.asyncio
 async def test_merge_group_same_root_cause_returns_one_merged_finding():
-    import json
     from argus_core.agents.synthesis_agent import _merge_group
 
     f1 = _make_finding(severity="critical", confidence=0.9, agent="security", title="SQL Injection",
@@ -142,7 +140,6 @@ async def test_merge_group_same_root_cause_returns_one_merged_finding():
 
 @pytest.mark.asyncio
 async def test_merge_group_different_root_cause_returns_both():
-    import json
     from argus_core.agents.synthesis_agent import _merge_group
 
     f1 = _make_finding(severity="high", agent="security")
@@ -190,7 +187,6 @@ async def test_merge_group_bad_json_keeps_both():
 
 @pytest.mark.asyncio
 async def test_merge_group_group_of_three_merges_top_two_keeps_third():
-    import json
     from argus_core.agents.synthesis_agent import _merge_group
 
     f_critical = _make_finding(severity="critical", confidence=0.95, agent="security")
@@ -263,7 +259,6 @@ async def test_run_synthesis_agent_solos_pass_through():
 @pytest.mark.asyncio
 async def test_run_synthesis_agent_merges_overlapping_same_root_cause():
     """Two overlapping findings with same root cause collapse to one synthesis finding."""
-    import json
     from argus_core.agents.synthesis_agent import run_synthesis_agent
 
     f1 = _make_finding(file_path="a.py", line_start=10, line_end=20,
@@ -301,7 +296,6 @@ async def test_run_synthesis_agent_merges_overlapping_same_root_cause():
 @pytest.mark.asyncio
 async def test_run_synthesis_agent_keeps_both_different_root_cause():
     """Overlapping findings with different root causes both survive."""
-    import json
     from argus_core.agents.synthesis_agent import run_synthesis_agent
 
     f1 = _make_finding(file_path="a.py", line_start=10, line_end=20, agent="security")

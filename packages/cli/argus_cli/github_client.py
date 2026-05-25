@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import httpx
-
 from argus_core.models import Finding, ReviewResult
 
 GITHUB_API = "https://api.github.com"

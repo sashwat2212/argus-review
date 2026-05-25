@@ -68,7 +68,7 @@ def run_review_task(
                 loop.close()
         except Exception as err:
             log.error("Failed to mark review as failed", error=str(err))
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc) from exc
 
 
 async def _async_run_review(
@@ -111,7 +111,12 @@ async def _async_run_review(
     engine_start = datetime.utcnow()
     result = await engine.review_diff(raw_diff)
     engine_duration = (datetime.utcnow() - engine_start).total_seconds()
-    log.info("Review Engine completed", duration_sec=engine_duration, score=result.score, total_findings=len(result.findings))
+    log.info(
+        "Review Engine completed",
+        duration_sec=engine_duration,
+        score=result.score,
+        total_findings=len(result.findings),
+    )
 
     import uuid
 
@@ -194,7 +199,12 @@ async def _update_review_status(review_id: str, status: str, **kwargs: object) -
             await session.commit()
 
 
-async def _mark_failed(review_id: str, error: str, head_sha: str = "", repo_full_name: str = "") -> None:
+async def _mark_failed(
+    review_id: str,
+    error: str,
+    head_sha: str = "",
+    repo_full_name: str = "",
+) -> None:
     await _update_review_status(review_id, "failed", completed_at=datetime.utcnow())
     token = settings.github_token
     if token and head_sha and repo_full_name:

@@ -43,7 +43,11 @@ async def github_login():
 
 
 @router.get("/github/callback")
-async def github_callback(code: str, response: Response, session: AsyncSession = Depends(get_session)):
+async def github_callback(
+    code: str,
+    response: Response,
+    session: AsyncSession = Depends(get_session),
+):
     if not code:
         raise HTTPException(status_code=400, detail="Code not provided")
 
@@ -80,7 +84,11 @@ async def github_callback(code: str, response: Response, session: AsyncSession =
 
         # Upsert Organization (Personal Workspace for now)
         org_name = f"{github_login}'s Workspace"
-        org_result = await session.execute(select(Organization).where(Organization.github_org_login == github_login))
+        org_result = await session.execute(
+            select(Organization).where(
+                Organization.github_org_login == github_login
+            )
+        )
         org = org_result.scalar_one_or_none()
         
         if not org:

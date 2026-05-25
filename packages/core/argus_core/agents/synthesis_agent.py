@@ -7,7 +7,7 @@ import re
 
 from langchain_core.language_models import BaseChatModel
 
-from argus_core.models import Finding, ReviewState, SEVERITY_ORDER
+from argus_core.models import SEVERITY_ORDER, Finding, ReviewState
 
 logger = logging.getLogger(__name__)
 
