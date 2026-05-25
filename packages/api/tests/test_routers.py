@@ -6,7 +6,7 @@ import pytest
 from argus_api.main import app
 from httpx import ASGITransport, AsyncClient
 
-from tests.conftest import AUTH_HEADERS
+from tests.conftest import AUTH_HEADERS, TEST_ORG_ID
 
 
 @pytest.mark.asyncio
@@ -19,12 +19,6 @@ async def test_health():
 
 @pytest.mark.asyncio
 async def test_list_reviews_empty():
-    from argus_api.database import Base, engine
-
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
-
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.get("/api/v1/reviews", headers=AUTH_HEADERS)
     assert resp.status_code == 200
@@ -35,12 +29,6 @@ async def test_list_reviews_empty():
 
 @pytest.mark.asyncio
 async def test_list_repositories_empty():
-    from argus_api.database import Base, engine
-
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
-
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.get("/api/v1/repositories", headers=AUTH_HEADERS)
     assert resp.status_code == 200
@@ -49,12 +37,6 @@ async def test_list_repositories_empty():
 
 @pytest.mark.asyncio
 async def test_get_review_not_found():
-    from argus_api.database import Base, engine
-
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
-
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.get(f"/api/v1/reviews/{uuid.uuid4()}", headers=AUTH_HEADERS)
     assert resp.status_code == 404
@@ -62,85 +44,66 @@ async def test_get_review_not_found():
 
 @pytest.mark.asyncio
 async def test_list_reviews_requires_auth():
-    from argus_api.dependencies import require_api_key
-    from argus_api.main import app
+    """Without any auth, the endpoint should return 401."""
+    from argus_api.dependencies import get_current_user
 
-    # Temporarily remove the override so real auth is enforced
-    app.dependency_overrides.pop(require_api_key, None)
+    # Temporarily remove the mock so real JWT auth runs
+    app.dependency_overrides.pop(get_current_user, None)
     try:
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             resp = await client.get("/api/v1/reviews")
         assert resp.status_code == 401
     finally:
-        app.dependency_overrides[require_api_key] = lambda: None
+        from tests.conftest import _test_user
 
+        async def _mock_user():
+            return _test_user
 
-@pytest.mark.asyncio
-async def test_list_reviews_with_valid_token():
-    from argus_api.database import Base, engine
-
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
-
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        resp = await client.get("/api/v1/reviews", headers={"Authorization": "Bearer test-api-key"})
-    assert resp.status_code == 200
+        app.dependency_overrides[get_current_user] = _mock_user
 
 
 @pytest.mark.asyncio
 async def test_list_reviews_with_wrong_token():
-    from argus_api.dependencies import require_api_key
-    from argus_api.main import app as _app
+    """A garbage Bearer token should be rejected with 401."""
+    from argus_api.dependencies import get_current_user
 
-    # Temporarily remove the override so real auth is enforced
-    _app.dependency_overrides.pop(require_api_key, None)
+    app.dependency_overrides.pop(get_current_user, None)
     try:
-        async with AsyncClient(
-            transport=ASGITransport(app=_app), base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             resp = await client.get(
                 "/api/v1/reviews",
-                headers={"Authorization": "Bearer wrong-key"},
+                headers={"Authorization": "Bearer totally-wrong-token"},
             )
         assert resp.status_code == 401
     finally:
-        _app.dependency_overrides[require_api_key] = lambda: None
+        from tests.conftest import _test_user
+
+        async def _mock_user():
+            return _test_user
+
+        app.dependency_overrides[get_current_user] = _mock_user
 
 
 @pytest.mark.asyncio
 async def test_review_has_github_comment_status_field():
-    from argus_api.database import Base, engine
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
-
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.get("/api/v1/reviews", headers=AUTH_HEADERS)
     assert resp.status_code == 200
-    # Field must be present in schema (null when no reviews exist is fine)
     data = resp.json()
     assert "items" in data
 
 
 @pytest.mark.asyncio
 async def test_review_out_includes_github_status_and_repo_name():
-
-    from argus_api.database import AsyncSessionLocal, Base, engine
-    from argus_api.models.organization import Organization
+    """Review created in the TEST org is visible to the test user."""
+    from argus_api.database import AsyncSessionLocal
     from argus_api.models.repository import Repository
     from argus_api.models.review import Review as ReviewModel
 
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
-
     async with AsyncSessionLocal() as session:
-        org = Organization(name="testorg", github_org_login="testorg")
-        session.add(org)
-        await session.flush()
+        # Use TEST_ORG_ID so the mock user owns this repo
         repo = Repository(
-            org_id=org.id,
+            org_id=TEST_ORG_ID,
             github_repo_id="99999",
             full_name="testorg/testrepo",
             default_branch="main",
@@ -168,24 +131,54 @@ async def test_review_out_includes_github_status_and_repo_name():
 
 
 @pytest.mark.asyncio
-async def test_retry_review_creates_new_review():
-    from unittest.mock import patch
-
-    from argus_api.database import AsyncSessionLocal, Base, engine
+async def test_review_cross_org_is_not_visible():
+    """A review in a DIFFERENT org must return 404, not the review data."""
+    from argus_api.database import AsyncSessionLocal
     from argus_api.models.organization import Organization
     from argus_api.models.repository import Repository
     from argus_api.models.review import Review as ReviewModel
 
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
-
     async with AsyncSessionLocal() as session:
-        org = Organization(name="testorg2", github_org_login="testorg2")
-        session.add(org)
+        other_org = Organization(name="Other Org", github_org_login="other-org-login")
+        session.add(other_org)
         await session.flush()
         repo = Repository(
-            org_id=org.id,
+            org_id=other_org.id,
+            github_repo_id="55555",
+            full_name="other-org/private-repo",
+            default_branch="main",
+        )
+        session.add(repo)
+        await session.flush()
+        review = ReviewModel(
+            repo_id=repo.id,
+            trigger_type="webhook",
+            pr_number=99,
+            pr_title="Secret PR",
+            status="completed",
+        )
+        session.add(review)
+        await session.commit()
+        other_review_id = str(review.id)
+
+    # The test user belongs to TEST_ORG_ID, not other_org — must get 404
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        resp = await client.get(f"/api/v1/reviews/{other_review_id}", headers=AUTH_HEADERS)
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_retry_review_creates_new_review():
+    from unittest.mock import patch
+
+    from argus_api.database import AsyncSessionLocal
+    from argus_api.models.repository import Repository
+    from argus_api.models.review import Review as ReviewModel
+
+    async with AsyncSessionLocal() as session:
+        # Use TEST_ORG_ID so the mock user owns this repo
+        repo = Repository(
+            org_id=TEST_ORG_ID,
             github_repo_id="88888",
             full_name="testorg2/myrepo",
             default_branch="main",
@@ -225,22 +218,15 @@ async def test_retry_review_not_found():
 
 @pytest.mark.asyncio
 async def test_review_out_includes_raw_diff():
-    from argus_api.database import AsyncSessionLocal, Base, engine
-    from argus_api.models.organization import Organization
+    from argus_api.database import AsyncSessionLocal
     from argus_api.models.repository import Repository
     from argus_api.models.review import Review as ReviewModel
 
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
-
     raw = "diff --git a/foo.py b/foo.py\n--- a/foo.py\n+++ b/foo.py\n+new line\n"
     async with AsyncSessionLocal() as session:
-        org = Organization(name="difforg", github_org_login="difforg")
-        session.add(org)
-        await session.flush()
+        # Use TEST_ORG_ID so the mock user owns this repo
         repo = Repository(
-            org_id=org.id,
+            org_id=TEST_ORG_ID,
             github_repo_id="11111",
             full_name="difforg/repo",
             default_branch="main",
