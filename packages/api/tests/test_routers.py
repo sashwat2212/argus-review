@@ -6,7 +6,7 @@ import pytest
 from argus_api.main import app
 from httpx import ASGITransport, AsyncClient
 
-AUTH_HEADERS = {"Authorization": "Bearer test-api-key"}
+from tests.conftest import AUTH_HEADERS
 
 
 @pytest.mark.asyncio
