@@ -12,7 +12,6 @@ from argus_api.database import get_session
 from argus_api.dependencies import require_api_key
 from argus_api.limiter import limiter
 from argus_api.models.finding import Finding
-from argus_api.models.repository import Repository
 from argus_api.models.review import Review
 from argus_api.schemas.finding import FindingOut, FindingPatch
 from argus_api.schemas.review import (

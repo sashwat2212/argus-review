@@ -1,5 +1,14 @@
+import os
 from celery import Celery
+from celery.signals import setup_logging as celery_setup_logging
+
 from argus_api.config import settings
+from argus_api.logger import setup_logging
+
+@celery_setup_logging.connect
+def config_loggers(*args, **kwds):
+    is_prod = os.environ.get("ENV", "development") == "production"
+    setup_logging(json_logs=is_prod)
 
 celery_app = Celery(
     "argus",

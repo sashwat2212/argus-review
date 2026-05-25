@@ -45,6 +45,8 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
       SECRET_KEY: ${SECRET_KEY:-change-me}
       ARGUS_API_KEY: ${ARGUS_API_KEY:-argus-dev-key-change-in-prod}
     ports:
@@ -68,6 +70,7 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       ARGUS_API_KEY: ${ARGUS_API_KEY:-argus-dev-key-change-in-prod}
+      IS_CELERY_WORKER: 1
     depends_on:
       postgres:
         condition: service_healthy

@@ -3,29 +3,34 @@
 @tailwind utilities;
 
 /* ══════════════════════════════════════════════
-   ARGUS v2 — Design System Tokens
+   ARGUS v5 — Premium SaaS Tokens (2-Color Theme)
 ══════════════════════════════════════════════ */
 :root {
   --font-ui:   'Inter', system-ui, sans-serif;
   --font-mono: 'Fira Code', 'Cascadia Code', monospace;
 
-  /* Palette */
-  --color-bg:       #020617;   /* slate-950 */
-  --color-surface:  #0f172a;   /* slate-900 */
-  --color-border:   rgba(255,255,255,0.05);
-  --color-border-h: rgba(255,255,255,0.10);
+  /* 2-Color Theme: Deep Indigo + Vibrant Cyan/Teal */
+  --color-primary:   #4f46e5; /* indigo-600 */
+  --color-primary-dim: rgba(79,70,229, 0.15);
+  --color-accent:    #06b6d4; /* cyan-500 */
+  --color-accent-dim: rgba(6,182,212, 0.15);
 
-  --color-indigo: #6366f1;
-  --color-cyan:   #22d3ee;
-  --color-emerald:#10b981;
-  --color-rose:   #f43f5e;
-  --color-amber:  #f59e0b;
-  --color-violet: #8b5cf6;
+  /* Deep slate/obsidian structural palette */
+  --color-bg:       #09090b;   /* zinc-950 */
+  --color-surface:  #18181b;   /* zinc-900 */
+  --color-surface-hover: #27272a; /* zinc-800 */
+  --color-border:   rgba(255,255,255,0.06);
+  --color-border-h: rgba(255,255,255,0.12);
 
-  /* Transitions */
-  --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
-  --duration-fast: 150ms;
-  --duration-med:  250ms;
+  /* Semantic Feedback Colors */
+  --color-success:  #10b981;
+  --color-warning:  #f59e0b;
+  --color-danger:   #f43f5e;
+}
+
+::selection {
+  background: var(--color-accent-dim);
+  color: var(--color-accent);
 }
 
 html, body, #root {
@@ -33,21 +38,20 @@ html, body, #root {
   font-family: var(--font-ui);
   -webkit-font-smoothing: antialiased;
   background-color: var(--color-bg);
-  color: #f1f5f9;
+  color: #e4e4e7; /* zinc-200 */
 }
 
-/* Monospace elements use Fira Code */
 code, pre, kbd, .font-mono {
   font-family: var(--font-mono) !important;
 }
 
-/* ── Scrollbar ── */
-::-webkit-scrollbar        { width: 4px; height: 4px; }
+/* ── Custom Scrollbar ── */
+::-webkit-scrollbar        { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track  { background: transparent; }
-::-webkit-scrollbar-thumb  { background: rgba(255,255,255,0.08); border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+::-webkit-scrollbar-thumb  { background: rgba(255,255,255,0.1); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
 
-/* ── Keyframes ── */
+/* ── Animations ── */
 @keyframes shimmer {
   0%   { background-position: -200% 0; }
   100% { background-position:  200% 0; }
@@ -63,70 +67,81 @@ code, pre, kbd, .font-mono {
   to   { opacity: 1; }
 }
 
-@keyframes score-ring-fill {
-  from { stroke-dashoffset: 100; }
-}
+.animate-slide-up { animation: slide-up 250ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.animate-fade-in { animation: fade-in 250ms ease both; }
 
-/* ── Utility classes ── */
-.animate-slide-up {
-  animation: slide-up var(--duration-med) var(--ease-out-expo) both;
-}
-
-.animate-fade-in {
-  animation: fade-in var(--duration-med) ease both;
-}
-
-/* Shimmer skeleton */
 .skeleton {
   background: linear-gradient(
     90deg,
     rgba(255,255,255,0.03) 25%,
-    rgba(255,255,255,0.07) 50%,
+    var(--color-primary-dim) 50%,
     rgba(255,255,255,0.03) 75%
   );
   background-size: 200% 100%;
-  animation: shimmer 1.6s ease-in-out infinite;
+  animation: shimmer 1.5s ease-in-out infinite;
   border-radius: 8px;
 }
 
 /* Score ring SVG */
-.score-ring-track { fill: none; stroke: rgba(255,255,255,0.06); }
-.score-ring-fill  { fill: none; stroke-linecap: round; transition: stroke-dasharray 0.8s var(--ease-out-expo); }
+.score-ring-track { fill: none; stroke: rgba(255,255,255,0.04); }
+.score-ring-fill  { fill: none; stroke-linecap: round; transition: stroke-dasharray 1s cubic-bezier(0.22, 1, 0.36, 1); }
 
-/* Command palette backdrop */
+/* CmdK Backdrop */
 .cmd-backdrop {
-  background: rgba(2,6,23,0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(9,9,11,0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
-
-
-/* ── diff2html dark theme overrides ── */
+/* ── Custom Diff2Html Theme (Premium SaaS) ── */
 .argus-diff .d2h-file-wrapper {
-  background-color: #0d1117;
-  border-color: #21262d;
-  margin-bottom: 0;
+  background: transparent;
+  border: none;
+  margin: 0;
 }
-.argus-diff .d2h-file-header {
-  background-color: #161b22;
-  border-color: #21262d;
-  color: #e6edf3;
-}
+.argus-diff .d2h-file-header { display: none; }
 .argus-diff .d2h-code-wrapper,
 .argus-diff table {
-  background-color: #0d1117;
+  background: transparent;
   width: 100%;
+  border-collapse: collapse;
+}
+.argus-diff .d2h-code-line {
+  font-family: var(--font-mono) !important;
+  font-size: 11px;
+  line-height: 1.5;
+  padding: 0 8px;
 }
 .argus-diff td.d2h-code-linenumber {
-  background-color: #0d1117;
-  border-color: #21262d;
-  color: #484f58;
+  background: rgba(255,255,255,0.02);
+  border: none;
+  color: #52525b;
+  min-width: 40px;
+  padding: 0 12px 0 0;
+  text-align: right;
+  user-select: none;
 }
-.argus-diff td.d2h-code-side-linenumber {
-  background-color: #0d1117;
-  border-color: #21262d;
-  color: #484f58;
+.argus-diff .d2h-emptyplaceholder { background: rgba(255,255,255,0.02); border: none; }
+.argus-diff .d2h-ins { background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3); }
+.argus-diff .d2h-del { background: rgba(244, 63, 94, 0.1); border-color: rgba(244, 63, 94, 0.3); }
+.argus-diff .d2h-info { background: var(--color-primary-dim); color: var(--color-primary); }
+
+/* Syntax Highlights */
+.argus-diff .d2h-ins .d2h-code-line-ctn { color: #34d399; }
+.argus-diff .d2h-del .d2h-code-line-ctn { color: #fb7185; }
+.argus-diff .d2h-code-line-ctn { color: #a1a1aa; }
+
+/* The Finding Highlight row */
+.argus-diff tr.argus-highlight {
+  background-color: var(--color-accent-dim) !important;
+}
+.argus-diff tr.argus-highlight td {
+  border-top: 1px solid var(--color-accent) !important;
+  border-bottom: 1px solid var(--color-accent) !important;
+}
+.argus-diff tr.argus-highlight td.d2h-code-linenumber {
+  color: var(--color-accent) !important;
+  font-weight: bold;
 }
 .argus-diff .d2h-code-line,
 .argus-diff td.d2h-code-side-line {

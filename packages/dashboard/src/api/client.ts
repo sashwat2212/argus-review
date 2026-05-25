@@ -1,33 +1,20 @@
 import type { Finding, Review, ReviewListOut, ReviewRetryOut, ReviewStatsOut } from './types';
 
 const BASE = import.meta.env.VITE_API_URL ?? '';
-const STORAGE_KEY = 'argus_api_key';
-
-export function getStoredApiKey(): string | null {
-  return localStorage.getItem(STORAGE_KEY);
-}
-
-export function setStoredApiKey(key: string): void {
-  localStorage.setItem(STORAGE_KEY, key);
-}
-
-export function clearStoredApiKey(): void {
-  localStorage.removeItem(STORAGE_KEY);
-}
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const key = getStoredApiKey();
   const res = await fetch(`${BASE}${path}`, {
     headers: {
       'Content-Type': 'application/json',
-      ...(key ? { Authorization: `Bearer ${key}` } : {}),
       ...init?.headers,
     },
+    credentials: 'include', // Ensures HTTP-only JWT cookies are sent
     ...init,
   });
   if (res.status === 401) {
-    clearStoredApiKey();
-    window.location.reload();
+    if (window.location.pathname !== '/login') {
+      window.location.href = '/login';
+    }
     throw new Error('Unauthorized');
   }
   if (!res.ok) throw new Error(`API ${res.status}: ${res.statusText}`);
@@ -35,10 +22,8 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  verifyKey: (key: string) =>
-    fetch(`${BASE}/api/v1/auth/verify`, {
-      headers: { Authorization: `Bearer ${key}` },
-    }).then(r => r.ok),
+  getMe: () =>
+    apiFetch<{ id: string; github_login: string; email: string; avatar_url: string; role: string; org_id: string }>(`/api/v1/auth/me`),
 
   listReviews: (page = 1, pageSize = 20, status?: string) => {
     const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
