@@ -70,6 +70,7 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       ARGUS_API_KEY: ${ARGUS_API_KEY:-argus-dev-key-change-in-prod}
+      IS_CELERY_WORKER: 1
     depends_on:
       postgres:
         condition: service_healthy

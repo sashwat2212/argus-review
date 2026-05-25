@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 import typer
 import yaml
@@ -13,7 +12,7 @@ CONFIG_PATH = Path.home() / ".argus" / "config.yml"
 
 
 def config_command(
-    set_key: Optional[str] = typer.Option(None, "--set", help="Set key=value"),
+    set_key: str | None = typer.Option(None, "--set", help="Set key=value"),
 ) -> None:
     """View or edit Argus configuration."""
     if set_key:

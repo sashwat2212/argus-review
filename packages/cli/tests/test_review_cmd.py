@@ -1,15 +1,12 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
-from typer.testing import CliRunner
-
 from argus_cli.app import app
 from argus_core.models import ReviewResult
-
+from typer.testing import CliRunner
 
 runner = CliRunner()
 

@@ -2,10 +2,8 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, patch
 
-import pytest
-from typer.testing import CliRunner
-
 from argus_cli.app import app
+from typer.testing import CliRunner
 
 runner = CliRunner()
 

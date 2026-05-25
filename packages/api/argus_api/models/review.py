@@ -2,11 +2,17 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from argus_api.database import Base
+
+if TYPE_CHECKING:
+    from argus_api.models.finding import Finding
+    from argus_api.models.repository import Repository
+    from argus_api.models.user import User
 
 
 class Review(Base):
@@ -28,9 +34,15 @@ class Review(Base):
     github_comment_status: Mapped[str | None] = mapped_column(String(20))
     raw_diff: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    repository: Mapped[Repository] = relationship("Repository", back_populates="reviews")
-    triggered_by_user: Mapped[User | None] = relationship("User", back_populates="triggered_reviews")
-    findings: Mapped[list[Finding]] = relationship("Finding", back_populates="review", cascade="all, delete-orphan")
+    repository: Mapped[Repository] = relationship(
+        "Repository", back_populates="reviews"
+    )
+    triggered_by_user: Mapped[User | None] = relationship(
+        "User", back_populates="triggered_reviews"
+    )
+    findings: Mapped[list[Finding]] = relationship(
+        "Finding", back_populates="review", cascade="all, delete-orphan"
+    )
 
     @property
     def repo_full_name(self) -> str | None:

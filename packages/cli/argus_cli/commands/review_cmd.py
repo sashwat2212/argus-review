@@ -5,28 +5,27 @@ import json
 import re
 import subprocess
 from pathlib import Path
-from typing import Optional
 
 import typer
+from argus_core.config import CoreConfig
+from argus_core.engine import ReviewEngine
+from argus_core.models import ReviewResult
 from rich.console import Console
 
 from argus_cli.commands.init_cmd import load_config
 from argus_cli.display import show_review_result
 from argus_cli.github_client import GitHubClient
 from argus_cli.local_db import save_review
-from argus_core.config import CoreConfig
-from argus_core.engine import ReviewEngine
-from argus_core.models import ReviewResult
 
 console = Console()
 
 
 def review_command(
-    pr: Optional[int] = typer.Option(None, "--pr", help="Review a specific PR number"),
-    file: Optional[Path] = typer.Option(None, "--file", "-f", help="Review a single file"),
-    repo: Optional[str] = typer.Option(None, "--repo", help="GitHub repo (owner/name)"),
+    pr: int | None = typer.Option(None, "--pr", help="Review a specific PR number"),
+    file: Path | None = typer.Option(None, "--file", "-f", help="Review a single file"),
+    repo: str | None = typer.Option(None, "--repo", help="GitHub repo (owner/name)"),
     github_comment: bool = typer.Option(False, "--github-comment", help="Post findings to GitHub"),
-    output_json: Optional[Path] = typer.Option(None, "--output-json", help="Write result as JSON"),
+    output_json: Path | None = typer.Option(None, "--output-json", help="Write result as JSON"),
 ) -> None:
     """Review code using AI agents."""
     asyncio.run(

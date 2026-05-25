@@ -5,6 +5,7 @@ import sys
 
 import structlog
 
+
 def setup_logging(json_logs: bool = False) -> None:
     """
     Configures standard logging and structlog.

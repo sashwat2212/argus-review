@@ -5,7 +5,6 @@ from dataclasses import asdict
 from pathlib import Path
 
 import aiosqlite
-
 from argus_core.models import ReviewResult
 
 DB_PATH = Path.home() / ".argus" / "local.db"

@@ -4,9 +4,8 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
-from argus_core.engine import ReviewEngine, _compute_score
 from argus_core.config import CoreConfig
+from argus_core.engine import ReviewEngine, _compute_score
 from argus_core.models import Finding
 
 
@@ -85,8 +84,9 @@ def test_core_config_custom_max_concurrent_chunks():
 
 def test_review_state_has_annotated_reducers():
     """Verify ReviewState fields use add reducer so parallel Send nodes accumulate correctly."""
-    from typing import get_type_hints, get_args, get_origin, Annotated
     from operator import add
+    from typing import Annotated, get_args, get_origin, get_type_hints
+
     from argus_core.models import ReviewState
 
     hints = get_type_hints(ReviewState, include_extras=True)
@@ -99,8 +99,7 @@ def test_review_state_has_annotated_reducers():
 
 
 def test_chunk_state_exists():
-    from argus_core.models import ChunkState
-    from argus_core.models import DiffChunk
+    from argus_core.models import ChunkState, DiffChunk
     cs: ChunkState = {"chunk": DiffChunk(
         file_path="f.py", language="python",
         lines=["+x=1"], start_line=1, end_line=1,
@@ -112,6 +111,7 @@ def test_chunk_state_exists():
 async def test_quality_agent_returns_findings_for_single_chunk():
     import asyncio
     from unittest.mock import AsyncMock, MagicMock
+
     from argus_core.agents.quality_agent import run_quality_agent
     from argus_core.models import DiffChunk
 
@@ -137,6 +137,7 @@ async def test_quality_agent_returns_findings_for_single_chunk():
 async def test_quality_agent_retries_once_then_returns_error():
     import asyncio
     from unittest.mock import AsyncMock, MagicMock
+
     from argus_core.agents.quality_agent import run_quality_agent
     from argus_core.models import DiffChunk
 
@@ -159,6 +160,7 @@ async def test_quality_agent_retries_once_then_returns_error():
 async def test_security_agent_returns_findings_for_single_chunk():
     import asyncio
     from unittest.mock import AsyncMock, MagicMock
+
     from argus_core.agents.security_agent import run_security_agent
     from argus_core.models import DiffChunk
 
@@ -184,6 +186,7 @@ async def test_security_agent_returns_findings_for_single_chunk():
 async def test_security_agent_retries_once_then_returns_error():
     import asyncio
     from unittest.mock import AsyncMock, MagicMock
+
     from argus_core.agents.security_agent import run_security_agent
     from argus_core.models import DiffChunk
 
