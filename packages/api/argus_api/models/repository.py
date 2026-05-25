@@ -2,11 +2,16 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import JSON, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from argus_api.database import Base
+
+if TYPE_CHECKING:
+    from argus_api.models.organization import Organization
+    from argus_api.models.review import Review
 
 
 class Repository(Base):

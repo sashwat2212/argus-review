@@ -6,7 +6,7 @@ import pytest
 from argus_api.main import app
 from httpx import ASGITransport, AsyncClient
 
-AUTH_HEADERS = {"Authorization": "Bearer test-api-key"}
+from tests.conftest import AUTH_HEADERS
 
 
 @pytest.mark.asyncio
@@ -62,9 +62,17 @@ async def test_get_review_not_found():
 
 @pytest.mark.asyncio
 async def test_list_reviews_requires_auth():
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        resp = await client.get("/api/v1/reviews")
-    assert resp.status_code == 401
+    from argus_api.dependencies import require_api_key
+    from argus_api.main import app
+
+    # Temporarily remove the override so real auth is enforced
+    app.dependency_overrides.pop(require_api_key, None)
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.get("/api/v1/reviews")
+        assert resp.status_code == 401
+    finally:
+        app.dependency_overrides[require_api_key] = lambda: None
 
 
 @pytest.mark.asyncio
@@ -82,9 +90,22 @@ async def test_list_reviews_with_valid_token():
 
 @pytest.mark.asyncio
 async def test_list_reviews_with_wrong_token():
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        resp = await client.get("/api/v1/reviews", headers={"Authorization": "Bearer wrong-key"})
-    assert resp.status_code == 401
+    from argus_api.dependencies import require_api_key
+    from argus_api.main import app as _app
+
+    # Temporarily remove the override so real auth is enforced
+    _app.dependency_overrides.pop(require_api_key, None)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=_app), base_url="http://test"
+        ) as client:
+            resp = await client.get(
+                "/api/v1/reviews",
+                headers={"Authorization": "Bearer wrong-key"},
+            )
+        assert resp.status_code == 401
+    finally:
+        _app.dependency_overrides[require_api_key] = lambda: None
 
 
 @pytest.mark.asyncio

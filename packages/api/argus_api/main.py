@@ -4,13 +4,13 @@ import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
+import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-import structlog
 
 from argus_api.config import settings
 from argus_api.database import init_db

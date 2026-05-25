@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import uuid
+from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from argus_api.database import Base
+
+if TYPE_CHECKING:
+    from argus_api.models.review import Review
 
 
 class Finding(Base):

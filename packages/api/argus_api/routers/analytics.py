@@ -244,7 +244,10 @@ async def get_score_distribution(
     session: AsyncSession = Depends(get_session),
     _auth: None = Depends(require_api_key),
 ) -> list[ScoreDistributionItem]:
-    bands = [("0–20", 0, 20), ("21–40", 21, 40), ("41–60", 41, 60), ("61–80", 61, 80), ("81–100", 81, 100)]
+    bands = [
+        ("0–20", 0, 20), ("21–40", 21, 40), ("41–60", 41, 60),
+        ("61–80", 61, 80), ("81–100", 81, 100),
+    ]
     result = []
     for label, lo, hi in bands:
         cnt = (await session.execute(
