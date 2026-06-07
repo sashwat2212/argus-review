@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,6 +19,18 @@ router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 @router.get("/verify")
 async def verify(_auth: None = Depends(require_api_key)) -> dict:
     return {"status": "ok"}
+
+
+@router.post("/logout")
+async def logout(response: Response) -> dict:
+    """Clear the HTTPOnly session cookie server-side."""
+    response.delete_cookie(
+        key="argus_session",
+        httponly=True,
+        samesite="lax",
+        path="/",
+    )
+    return {"status": "logged out"}
 
 
 @router.get("/me")
