@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-import uuid
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
+from argus_api.main import app
 from httpx import ASGITransport, AsyncClient
 
-from argus_api.main import app
 from tests.conftest import AUTH_HEADERS, TEST_ORG_ID
-
 
 # ---------------------------------------------------------------------------
 # Shared seed fixture
@@ -40,7 +38,7 @@ async def seeded_data():
         session.add(repo)
         await session.flush()
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         reviews = [
             Review(
@@ -167,6 +165,7 @@ ANALYTICS_PATHS = [
 async def test_analytics_requires_auth(path: str):
     """Each analytics endpoint must reject unauthenticated requests with 401."""
     from argus_api.dependencies import get_current_user
+
     from tests.conftest import _test_user
 
     app.dependency_overrides.pop(get_current_user, None)

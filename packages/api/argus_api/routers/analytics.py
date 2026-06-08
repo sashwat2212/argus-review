@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy import case, extract, func, select
@@ -247,7 +247,7 @@ async def get_finding_velocity(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> list[VelocityPoint]:
-    today = datetime.utcnow().date()
+    today = datetime.now(UTC).date()
     date_list = [today - timedelta(days=i) for i in range(days - 1, -1, -1)]
 
     opened_rows = (await session.execute(
@@ -259,7 +259,7 @@ async def get_finding_velocity(
         .join(Finding, Finding.review_id == Review.id)
         .where(
             Repository.org_id == current_user.org_id,
-            Review.started_at >= datetime.utcnow() - timedelta(days=days),
+            Review.started_at >= datetime.now(UTC) - timedelta(days=days),
         )
         .group_by(func.date(Review.started_at))
     )).all()
@@ -275,7 +275,7 @@ async def get_finding_velocity(
         .where(
             Repository.org_id == current_user.org_id,
             Finding.is_resolved.is_(True),
-            Review.completed_at >= datetime.utcnow() - timedelta(days=days),
+            Review.completed_at >= datetime.now(UTC) - timedelta(days=days),
         )
         .group_by(func.date(Review.completed_at))
     )).all()

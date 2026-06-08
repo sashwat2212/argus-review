@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import case, func, select, update
@@ -131,7 +131,7 @@ async def retry_review(
         base_sha=original.base_sha,
         head_sha=original.head_sha,
         status="pending",
-        started_at=datetime.utcnow(),
+        started_at=datetime.now(UTC),
     )
     session.add(new_review)
     await session.commit()
