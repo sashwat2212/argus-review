@@ -30,7 +30,9 @@ async def run_quality_agent(
         except Exception as exc:
             logger.error(
                 "Quality agent error (attempt %d) for %s: %s",
-                attempt + 1, chunk.file_path, exc,
+                attempt + 1,
+                chunk.file_path,
+                exc,
             )
             if attempt == 0:
                 await asyncio.sleep(1)

@@ -52,9 +52,7 @@ class GitHubClient:
             if resp.status_code not in (200, 201):
                 pass
 
-    async def post_summary_comment(
-        self, repo: str, pr_number: int, result: ReviewResult
-    ) -> None:
+    async def post_summary_comment(self, repo: str, pr_number: int, result: ReviewResult) -> None:
         url = f"{GITHUB_API}/repos/{repo}/issues/{pr_number}/comments"
         body = _format_summary(result)
         async with httpx.AsyncClient() as client:
@@ -121,6 +119,8 @@ def _format_summary(result: ReviewResult) -> str:
     if not result.findings:
         lines.append("\n✅ No issues found.")
     else:
-        lines.append(f"\n{len(result.findings)} total findings across {result.total_chunks_processed} chunks.")
+        lines.append(
+            f"\n{len(result.findings)} total findings across {result.total_chunks_processed} chunks."
+        )
 
     return "\n".join(lines)

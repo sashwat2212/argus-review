@@ -57,36 +57,40 @@ async def get_overview(
     )
 
     total = (await session.execute(base)).scalar_one()
-    completed = (
-        await session.execute(base.where(Review.status == "completed"))
-    ).scalar_one()
-    avg_score_row = (await session.execute(
-        select(func.avg(Review.score))
-        .join(Repository, Review.repo_id == Repository.id)
-        .where(Repository.org_id == org_id, Review.status == "completed")
-    )).scalar_one()
-    pass_count = (await session.execute(
-        select(func.count())
-        .select_from(Review)
-        .join(Repository, Review.repo_id == Repository.id)
-        .where(
-            Repository.org_id == org_id,
-            Review.status == "completed",
-            Review.score >= 70,
+    completed = (await session.execute(base.where(Review.status == "completed"))).scalar_one()
+    avg_score_row = (
+        await session.execute(
+            select(func.avg(Review.score))
+            .join(Repository, Review.repo_id == Repository.id)
+            .where(Repository.org_id == org_id, Review.status == "completed")
         )
-    )).scalar_one()
+    ).scalar_one()
+    pass_count = (
+        await session.execute(
+            select(func.count())
+            .select_from(Review)
+            .join(Repository, Review.repo_id == Repository.id)
+            .where(
+                Repository.org_id == org_id,
+                Review.status == "completed",
+                Review.score >= 70,
+            )
+        )
+    ).scalar_one()
 
     org_review_ids = _org_review_ids_subquery(org_id)
-    open_findings = (await session.execute(
-        select(func.count())
-        .select_from(Finding)
-        .where(Finding.review_id.in_(org_review_ids), Finding.is_resolved.is_(False))
-    )).scalar_one()
-    total_findings = (await session.execute(
-        select(func.count())
-        .select_from(Finding)
-        .where(Finding.review_id.in_(org_review_ids))
-    )).scalar_one()
+    open_findings = (
+        await session.execute(
+            select(func.count())
+            .select_from(Finding)
+            .where(Finding.review_id.in_(org_review_ids), Finding.is_resolved.is_(False))
+        )
+    ).scalar_one()
+    total_findings = (
+        await session.execute(
+            select(func.count()).select_from(Finding).where(Finding.review_id.in_(org_review_ids))
+        )
+    ).scalar_one()
 
     return OverviewStats(
         total_reviews=total,
@@ -106,17 +110,19 @@ async def get_score_trend(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> list[ScorePoint]:
-    rows = (await session.execute(
-        select(Review.completed_at, Review.score, Review.pr_title)
-        .join(Repository, Review.repo_id == Repository.id)
-        .where(
-            Repository.org_id == current_user.org_id,
-            Review.status == "completed",
-            Review.score.is_not(None),
+    rows = (
+        await session.execute(
+            select(Review.completed_at, Review.score, Review.pr_title)
+            .join(Repository, Review.repo_id == Repository.id)
+            .where(
+                Repository.org_id == current_user.org_id,
+                Review.status == "completed",
+                Review.score.is_not(None),
+            )
+            .order_by(Review.completed_at.asc())
+            .limit(limit)
         )
-        .order_by(Review.completed_at.asc())
-        .limit(limit)
-    )).all()
+    ).all()
     return [
         ScorePoint(
             date=r.completed_at.strftime("%Y-%m-%d") if r.completed_at else "",
@@ -135,15 +141,17 @@ async def get_severity_breakdown(
     current_user: User = Depends(get_current_user),
 ) -> list[SeverityCount]:
     org_review_ids = _org_review_ids_subquery(current_user.org_id)
-    rows = (await session.execute(
-        select(Finding.severity, func.count().label("cnt"))
-        .where(
-            Finding.review_id.in_(org_review_ids),
-            Finding.is_resolved.is_(False),
+    rows = (
+        await session.execute(
+            select(Finding.severity, func.count().label("cnt"))
+            .where(
+                Finding.review_id.in_(org_review_ids),
+                Finding.is_resolved.is_(False),
+            )
+            .group_by(Finding.severity)
+            .order_by(func.count().desc())
         )
-        .group_by(Finding.severity)
-        .order_by(func.count().desc())
-    )).all()
+    ).all()
     return [SeverityCount(severity=r.severity, count=r.cnt) for r in rows]
 
 
@@ -155,13 +163,15 @@ async def get_top_categories(
     current_user: User = Depends(get_current_user),
 ) -> list[CategoryCount]:
     org_review_ids = _org_review_ids_subquery(current_user.org_id)
-    rows = (await session.execute(
-        select(Finding.category, func.count().label("cnt"))
-        .where(Finding.review_id.in_(org_review_ids))
-        .group_by(Finding.category)
-        .order_by(func.count().desc())
-        .limit(10)
-    )).all()
+    rows = (
+        await session.execute(
+            select(Finding.category, func.count().label("cnt"))
+            .where(Finding.review_id.in_(org_review_ids))
+            .group_by(Finding.category)
+            .order_by(func.count().desc())
+            .limit(10)
+        )
+    ).all()
     return [CategoryCount(category=r.category, count=r.cnt) for r in rows]
 
 
@@ -173,40 +183,51 @@ async def get_repository_health(
     current_user: User = Depends(get_current_user),
 ) -> list[RepositoryHealthItem]:
     repos = (
-        await session.execute(
-            select(Repository).where(Repository.org_id == current_user.org_id)
-        )
-    ).scalars().all()
+        (await session.execute(select(Repository).where(Repository.org_id == current_user.org_id)))
+        .scalars()
+        .all()
+    )
 
     result = []
     for repo in repos:
-        total = (await session.execute(
-            select(func.count()).select_from(Review).where(Review.repo_id == repo.id)
-        )).scalar_one()
-        avg_row = (await session.execute(
-            select(func.avg(Review.score)).where(
-                Review.repo_id == repo.id, Review.status == "completed"
+        total = (
+            await session.execute(
+                select(func.count()).select_from(Review).where(Review.repo_id == repo.id)
             )
-        )).scalar_one()
-        open_f = (await session.execute(
-            select(func.count()).select_from(Finding)
-            .join(Review, Finding.review_id == Review.id)
-            .where(Review.repo_id == repo.id, Finding.is_resolved.is_(False))
-        )).scalar_one()
-        last_row = (await session.execute(
-            select(Review.completed_at)
-            .where(Review.repo_id == repo.id, Review.status == "completed")
-            .order_by(Review.completed_at.desc())
-            .limit(1)
-        )).scalar_one_or_none()
-        result.append(RepositoryHealthItem(
-            repo_id=repo.id,
-            full_name=repo.full_name,
-            total_reviews=total,
-            avg_score=round(float(avg_row), 1) if avg_row is not None else None,
-            open_findings=open_f,
-            last_review_at=last_row,
-        ))
+        ).scalar_one()
+        avg_row = (
+            await session.execute(
+                select(func.avg(Review.score)).where(
+                    Review.repo_id == repo.id, Review.status == "completed"
+                )
+            )
+        ).scalar_one()
+        open_f = (
+            await session.execute(
+                select(func.count())
+                .select_from(Finding)
+                .join(Review, Finding.review_id == Review.id)
+                .where(Review.repo_id == repo.id, Finding.is_resolved.is_(False))
+            )
+        ).scalar_one()
+        last_row = (
+            await session.execute(
+                select(Review.completed_at)
+                .where(Review.repo_id == repo.id, Review.status == "completed")
+                .order_by(Review.completed_at.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        result.append(
+            RepositoryHealthItem(
+                repo_id=repo.id,
+                full_name=repo.full_name,
+                total_reviews=total,
+                avg_score=round(float(avg_row), 1) if avg_row is not None else None,
+                open_findings=open_f,
+                last_review_at=last_row,
+            )
+        )
     return result
 
 
@@ -218,16 +239,18 @@ async def get_agent_breakdown(
     current_user: User = Depends(get_current_user),
 ) -> list[AgentBreakdownItem]:
     org_review_ids = _org_review_ids_subquery(current_user.org_id)
-    rows = (await session.execute(
-        select(
-            Finding.agent,
-            func.count().label("total"),
-            func.sum(case((Finding.is_resolved.is_(True), 1), else_=0)).label("resolved"),
+    rows = (
+        await session.execute(
+            select(
+                Finding.agent,
+                func.count().label("total"),
+                func.sum(case((Finding.is_resolved.is_(True), 1), else_=0)).label("resolved"),
+            )
+            .where(Finding.review_id.in_(org_review_ids))
+            .group_by(Finding.agent)
+            .order_by(func.count().desc())
         )
-        .where(Finding.review_id.in_(org_review_ids))
-        .group_by(Finding.agent)
-        .order_by(func.count().desc())
-    )).all()
+    ).all()
     return [
         AgentBreakdownItem(
             agent=r.agent,
@@ -250,35 +273,39 @@ async def get_finding_velocity(
     today = datetime.now(UTC).date()
     date_list = [today - timedelta(days=i) for i in range(days - 1, -1, -1)]
 
-    opened_rows = (await session.execute(
-        select(
-            func.date(Review.started_at).label("d"),
-            func.count(Finding.id).label("cnt"),
+    opened_rows = (
+        await session.execute(
+            select(
+                func.date(Review.started_at).label("d"),
+                func.count(Finding.id).label("cnt"),
+            )
+            .join(Repository, Review.repo_id == Repository.id)
+            .join(Finding, Finding.review_id == Review.id)
+            .where(
+                Repository.org_id == current_user.org_id,
+                Review.started_at >= datetime.now(UTC) - timedelta(days=days),
+            )
+            .group_by(func.date(Review.started_at))
         )
-        .join(Repository, Review.repo_id == Repository.id)
-        .join(Finding, Finding.review_id == Review.id)
-        .where(
-            Repository.org_id == current_user.org_id,
-            Review.started_at >= datetime.now(UTC) - timedelta(days=days),
-        )
-        .group_by(func.date(Review.started_at))
-    )).all()
+    ).all()
     opened_map = {str(r.d): r.cnt for r in opened_rows}
 
-    resolved_rows = (await session.execute(
-        select(
-            func.date(Review.completed_at).label("d"),
-            func.count(Finding.id).label("cnt"),
+    resolved_rows = (
+        await session.execute(
+            select(
+                func.date(Review.completed_at).label("d"),
+                func.count(Finding.id).label("cnt"),
+            )
+            .join(Repository, Review.repo_id == Repository.id)
+            .join(Finding, Finding.review_id == Review.id)
+            .where(
+                Repository.org_id == current_user.org_id,
+                Finding.is_resolved.is_(True),
+                Review.completed_at >= datetime.now(UTC) - timedelta(days=days),
+            )
+            .group_by(func.date(Review.completed_at))
         )
-        .join(Repository, Review.repo_id == Repository.id)
-        .join(Finding, Finding.review_id == Review.id)
-        .where(
-            Repository.org_id == current_user.org_id,
-            Finding.is_resolved.is_(True),
-            Review.completed_at >= datetime.now(UTC) - timedelta(days=days),
-        )
-        .group_by(func.date(Review.completed_at))
-    )).all()
+    ).all()
     resolved_map = {str(r.d): r.cnt for r in resolved_rows}
 
     return [
@@ -299,22 +326,27 @@ async def get_score_distribution(
     current_user: User = Depends(get_current_user),
 ) -> list[ScoreDistributionItem]:
     bands = [
-        ("0–20", 0, 20), ("21–40", 21, 40), ("41–60", 41, 60),
-        ("61–80", 61, 80), ("81–100", 81, 100),
+        ("0–20", 0, 20),
+        ("21–40", 21, 40),
+        ("41–60", 41, 60),
+        ("61–80", 61, 80),
+        ("81–100", 81, 100),
     ]
     result = []
     for label, lo, hi in bands:
-        cnt = (await session.execute(
-            select(func.count())
-            .select_from(Review)
-            .join(Repository, Review.repo_id == Repository.id)
-            .where(
-                Repository.org_id == current_user.org_id,
-                Review.status == "completed",
-                Review.score >= lo,
-                Review.score <= hi,
+        cnt = (
+            await session.execute(
+                select(func.count())
+                .select_from(Review)
+                .join(Repository, Review.repo_id == Repository.id)
+                .where(
+                    Repository.org_id == current_user.org_id,
+                    Review.status == "completed",
+                    Review.score >= lo,
+                    Review.score <= hi,
+                )
             )
-        )).scalar_one()
+        ).scalar_one()
         result.append(ScoreDistributionItem(band=label, count=cnt))
     return result
 
@@ -328,13 +360,15 @@ async def get_top_files(
     current_user: User = Depends(get_current_user),
 ) -> list[TopFileItem]:
     org_review_ids = _org_review_ids_subquery(current_user.org_id)
-    rows = (await session.execute(
-        select(Finding.file_path, func.count().label("cnt"))
-        .where(Finding.review_id.in_(org_review_ids))
-        .group_by(Finding.file_path)
-        .order_by(func.count().desc())
-        .limit(limit)
-    )).all()
+    rows = (
+        await session.execute(
+            select(Finding.file_path, func.count().label("cnt"))
+            .where(Finding.review_id.in_(org_review_ids))
+            .group_by(Finding.file_path)
+            .order_by(func.count().desc())
+            .limit(limit)
+        )
+    ).all()
     return [TopFileItem(file_path=r.file_path, count=r.cnt) for r in rows]
 
 
@@ -345,26 +379,28 @@ async def get_review_duration(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> ReviewDurationStats:
-    row = (await session.execute(
-        select(
-            func.avg(
-                extract("epoch", Review.completed_at) - extract("epoch", Review.started_at)
-            ).label("avg_s"),
-            func.min(
-                extract("epoch", Review.completed_at) - extract("epoch", Review.started_at)
-            ).label("min_s"),
-            func.max(
-                extract("epoch", Review.completed_at) - extract("epoch", Review.started_at)
-            ).label("max_s"),
+    row = (
+        await session.execute(
+            select(
+                func.avg(
+                    extract("epoch", Review.completed_at) - extract("epoch", Review.started_at)
+                ).label("avg_s"),
+                func.min(
+                    extract("epoch", Review.completed_at) - extract("epoch", Review.started_at)
+                ).label("min_s"),
+                func.max(
+                    extract("epoch", Review.completed_at) - extract("epoch", Review.started_at)
+                ).label("max_s"),
+            )
+            .join(Repository, Review.repo_id == Repository.id)
+            .where(
+                Repository.org_id == current_user.org_id,
+                Review.status == "completed",
+                Review.completed_at.is_not(None),
+                Review.started_at.is_not(None),
+            )
         )
-        .join(Repository, Review.repo_id == Repository.id)
-        .where(
-            Repository.org_id == current_user.org_id,
-            Review.status == "completed",
-            Review.completed_at.is_not(None),
-            Review.started_at.is_not(None),
-        )
-    )).one()
+    ).one()
     return ReviewDurationStats(
         avg_seconds=round(float(row.avg_s), 1) if row.avg_s is not None else None,
         min_seconds=round(float(row.min_s), 1) if row.min_s is not None else None,

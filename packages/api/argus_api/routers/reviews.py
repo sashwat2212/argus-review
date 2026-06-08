@@ -71,10 +71,14 @@ async def list_reviews(
 
     total = (await session.execute(count_query)).scalar_one()
     rows = (
-        await session.execute(
-            query.order_by(Review.started_at.desc()).offset(offset).limit(page_size)
+        (
+            await session.execute(
+                query.order_by(Review.started_at.desc()).offset(offset).limit(page_size)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
 
     return ReviewListOut(items=list(rows), total=total, page=page, page_size=page_size)
 
@@ -166,9 +170,7 @@ async def patch_finding(
 
     finding = (
         await session.execute(
-            select(Finding).where(
-                Finding.id == finding_id, Finding.review_id == review_id
-            )
+            select(Finding).where(Finding.id == finding_id, Finding.review_id == review_id)
         )
     ).scalar_one_or_none()
     if not finding:
@@ -195,31 +197,39 @@ async def get_review_stats(
     if not review:
         raise HTTPException(status_code=404, detail="Review not found")
 
-    sev_rows = (await session.execute(
-        select(Finding.severity, func.count().label("cnt"))
-        .where(Finding.review_id == review_id)
-        .group_by(Finding.severity)
-        .order_by(func.count().desc())
-    )).all()
-
-    agent_rows = (await session.execute(
-        select(
-            Finding.agent,
-            func.count().label("total"),
-            func.sum(case((Finding.is_resolved.is_(True), 1), else_=0)).label("resolved"),
+    sev_rows = (
+        await session.execute(
+            select(Finding.severity, func.count().label("cnt"))
+            .where(Finding.review_id == review_id)
+            .group_by(Finding.severity)
+            .order_by(func.count().desc())
         )
-        .where(Finding.review_id == review_id)
-        .group_by(Finding.agent)
-    )).all()
+    ).all()
 
-    total = (await session.execute(
-        select(func.count()).select_from(Finding).where(Finding.review_id == review_id)
-    )).scalar_one()
-    resolved = (await session.execute(
-        select(func.count()).select_from(Finding).where(
-            Finding.review_id == review_id, Finding.is_resolved.is_(True)
+    agent_rows = (
+        await session.execute(
+            select(
+                Finding.agent,
+                func.count().label("total"),
+                func.sum(case((Finding.is_resolved.is_(True), 1), else_=0)).label("resolved"),
+            )
+            .where(Finding.review_id == review_id)
+            .group_by(Finding.agent)
         )
-    )).scalar_one()
+    ).all()
+
+    total = (
+        await session.execute(
+            select(func.count()).select_from(Finding).where(Finding.review_id == review_id)
+        )
+    ).scalar_one()
+    resolved = (
+        await session.execute(
+            select(func.count())
+            .select_from(Finding)
+            .where(Finding.review_id == review_id, Finding.is_resolved.is_(True))
+        )
+    ).scalar_one()
 
     return ReviewStatsOut(
         severity_breakdown=[SeverityCount(severity=r.severity, count=r.cnt) for r in sev_rows],

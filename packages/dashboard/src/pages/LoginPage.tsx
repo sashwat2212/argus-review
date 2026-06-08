@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { api } from '../api/client';
 
 const BOOT_LOGS = [
   '» [BOOT] Initializing Argus core static analysis engine v1.2.0...',

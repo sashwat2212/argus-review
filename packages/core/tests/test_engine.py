@@ -100,10 +100,16 @@ def test_review_state_has_annotated_reducers():
 
 def test_chunk_state_exists():
     from argus_core.models import ChunkState, DiffChunk
-    cs: ChunkState = {"chunk": DiffChunk(
-        file_path="f.py", language="python",
-        lines=["+x=1"], start_line=1, end_line=1,
-    )}
+
+    cs: ChunkState = {
+        "chunk": DiffChunk(
+            file_path="f.py",
+            language="python",
+            lines=["+x=1"],
+            start_line=1,
+            end_line=1,
+        )
+    }
     assert cs["chunk"].file_path == "f.py"
 
 
@@ -116,11 +122,13 @@ async def test_quality_agent_returns_findings_for_single_chunk():
     from argus_core.models import DiffChunk
 
     mock_llm = MagicMock()
-    mock_llm.ainvoke = AsyncMock(return_value=MagicMock(
-        content='{"findings": [{"file_path": "a.py", "line_start": 1, "line_end": 2, '
-                '"severity": "high", "category": "error_handling", "confidence": 0.9, '
-                '"title": "T", "description": "D", "why_it_matters": "W", "suggested_fix": "F"}]}'
-    ))
+    mock_llm.ainvoke = AsyncMock(
+        return_value=MagicMock(
+            content='{"findings": [{"file_path": "a.py", "line_start": 1, "line_end": 2, '
+            '"severity": "high", "category": "error_handling", "confidence": 0.9, '
+            '"title": "T", "description": "D", "why_it_matters": "W", "suggested_fix": "F"}]}'
+        )
+    )
 
     chunk = DiffChunk(file_path="a.py", language="python", lines=["+x=1"], start_line=1, end_line=2)
     sem = asyncio.Semaphore(3)
@@ -165,13 +173,17 @@ async def test_security_agent_returns_findings_for_single_chunk():
     from argus_core.models import DiffChunk
 
     mock_llm = MagicMock()
-    mock_llm.ainvoke = AsyncMock(return_value=MagicMock(
-        content='{"findings": [{"file_path": "c.py", "line_start": 3, "line_end": 4, '
-                '"severity": "critical", "category": "hardcoded_secret", "confidence": 0.95, '
-                '"title": "Secret", "description": "D", "why_it_matters": "W", "suggested_fix": "F"}]}'
-    ))
+    mock_llm.ainvoke = AsyncMock(
+        return_value=MagicMock(
+            content='{"findings": [{"file_path": "c.py", "line_start": 3, "line_end": 4, '
+            '"severity": "critical", "category": "hardcoded_secret", "confidence": 0.95, '
+            '"title": "Secret", "description": "D", "why_it_matters": "W", "suggested_fix": "F"}]}'
+        )
+    )
 
-    chunk = DiffChunk(file_path="c.py", language="python", lines=["+secret='abc'"], start_line=3, end_line=4)
+    chunk = DiffChunk(
+        file_path="c.py", language="python", lines=["+secret='abc'"], start_line=3, end_line=4
+    )
     sem = asyncio.Semaphore(3)
 
     findings, errors = await run_security_agent(chunk, mock_llm, sem)
@@ -224,7 +236,9 @@ async def test_chunks_processed_in_parallel():
     graph = build_review_graph(mock_llm, config)
 
     chunks = [
-        DiffChunk(file_path=f"file{i}.py", language="python", lines=["+x = 1"], start_line=1, end_line=1)
+        DiffChunk(
+            file_path=f"file{i}.py", language="python", lines=["+x = 1"], start_line=1, end_line=1
+        )
         for i in range(3)
     ]
     state: ReviewState = {
@@ -272,7 +286,9 @@ async def test_semaphore_limits_concurrent_llm_calls():
     graph = build_review_graph(mock_llm, config)
 
     chunks = [
-        DiffChunk(file_path=f"file{i}.py", language="python", lines=["+x = 1"], start_line=1, end_line=1)
+        DiffChunk(
+            file_path=f"file{i}.py", language="python", lines=["+x = 1"], start_line=1, end_line=1
+        )
         for i in range(5)
     ]
     state: ReviewState = {
@@ -305,7 +321,9 @@ async def test_chunk_failure_logs_error_and_review_completes():
     graph = build_review_graph(mock_llm, config)
 
     chunks = [
-        DiffChunk(file_path="broken.py", language="python", lines=["+x = 1"], start_line=1, end_line=1)
+        DiffChunk(
+            file_path="broken.py", language="python", lines=["+x = 1"], start_line=1, end_line=1
+        )
     ]
     state: ReviewState = {
         "diff_chunks": chunks,
@@ -317,8 +335,10 @@ async def test_chunk_failure_logs_error_and_review_completes():
 
     # Patch asyncio.sleep in both agent modules so retry doesn't add 2s to test time
     no_sleep = AsyncMock()
-    with patch("argus_core.agents.quality_agent.asyncio.sleep", no_sleep), \
-         patch("argus_core.agents.security_agent.asyncio.sleep", no_sleep):
+    with (
+        patch("argus_core.agents.quality_agent.asyncio.sleep", no_sleep),
+        patch("argus_core.agents.security_agent.asyncio.sleep", no_sleep),
+    ):
         result = await graph.ainvoke(state)
 
     assert result is not None

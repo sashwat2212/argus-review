@@ -26,9 +26,7 @@ class User(Base):
     role: Mapped[str] = mapped_column(String(50), default="member")
     created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
 
-    organization: Mapped[Organization] = relationship(
-        "Organization", back_populates="users"
-    )
+    organization: Mapped[Organization] = relationship("Organization", back_populates="users")
     triggered_reviews: Mapped[list[Review]] = relationship(
         "Review", back_populates="triggered_by_user"
     )

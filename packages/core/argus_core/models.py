@@ -65,4 +65,3 @@ class ReviewState(TypedDict):
 
 class ChunkState(TypedDict):
     chunk: DiffChunk
-

@@ -32,6 +32,7 @@ async def _run_history(limit: int, detail: int | None) -> None:
         )
         findings_data = row.get("detail", {}).get("findings", [])
         from argus_core.models import Finding
+
         for fd in findings_data:
             try:
                 f = Finding(**fd)

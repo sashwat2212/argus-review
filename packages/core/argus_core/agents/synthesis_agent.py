@@ -49,9 +49,8 @@ def _find_overlap_groups(
     for i in range(n):
         for j in range(i + 1, n):
             fi, fj = findings[i], findings[j]
-            if (
-                fi.file_path == fj.file_path
-                and max(fi.line_start, fj.line_start) <= min(fi.line_end, fj.line_end)
+            if fi.file_path == fj.file_path and max(fi.line_start, fj.line_start) <= min(
+                fi.line_end, fj.line_end
             ):
                 adj[i].add(j)
                 adj[j].add(i)

@@ -105,8 +105,6 @@ def test_review_exits_nonzero_on_critical(tmp_path, mock_config):
         instance.review_diff = AsyncMock(return_value=critical_result)
         with patch("argus_cli.commands.review_cmd.load_config", return_value={}):
             with patch("argus_cli.commands.review_cmd._diff_file", return_value=SAMPLE_DIFF):
-                result = runner.invoke(
-                    app, ["review", "--file", str(diff_file)]
-                )
+                result = runner.invoke(app, ["review", "--file", str(diff_file)])
 
     assert result.exit_code == 1

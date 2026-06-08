@@ -49,14 +49,17 @@ class OverviewStats(BaseModel):
     open_findings: int
     total_findings: int
 
+
 class ScorePoint(BaseModel):
     date: str
     score: float
     pr_title: str | None
 
+
 class SeverityCount(BaseModel):
     severity: str
     count: int
+
 
 class CategoryCount(BaseModel):
     category: str
@@ -64,6 +67,7 @@ class CategoryCount(BaseModel):
 
 
 # ── New v2 schemas ──────────────────────────────────────────
+
 
 class RepositoryHealthItem(BaseModel):
     repo_id: uuid.UUID
@@ -88,7 +92,7 @@ class VelocityPoint(BaseModel):
 
 
 class ScoreDistributionItem(BaseModel):
-    band: str   # e.g. "0–20", "21–40" …
+    band: str  # e.g. "0–20", "21–40" …
     count: int
 
 

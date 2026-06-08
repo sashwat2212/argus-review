@@ -34,9 +34,7 @@ class Review(Base):
     github_comment_status: Mapped[str | None] = mapped_column(String(20))
     raw_diff: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    repository: Mapped[Repository] = relationship(
-        "Repository", back_populates="reviews"
-    )
+    repository: Mapped[Repository] = relationship("Repository", back_populates="reviews")
     triggered_by_user: Mapped[User | None] = relationship(
         "User", back_populates="triggered_reviews"
     )

@@ -73,7 +73,9 @@ def upgrade() -> None:
     op.create_table(
         "findings",
         sa.Column("id", sa.UUID(), primary_key=True),
-        sa.Column("review_id", sa.UUID(), sa.ForeignKey("reviews.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "review_id", sa.UUID(), sa.ForeignKey("reviews.id", ondelete="CASCADE"), nullable=False
+        ),
         sa.Column("file_path", sa.String(500), nullable=False),
         sa.Column("line_start", sa.Integer(), nullable=False),
         sa.Column("line_end", sa.Integer(), nullable=False),

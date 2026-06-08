@@ -36,9 +36,7 @@ _test_user = User(
     role="owner",
 )
 
-TEST_JWT = create_access_token(
-    {"sub": str(TEST_USER_ID), "github_login": "testuser"}
-)
+TEST_JWT = create_access_token({"sub": str(TEST_USER_ID), "github_login": "testuser"})
 AUTH_HEADERS = {"Authorization": f"Bearer {TEST_JWT}"}
 
 
@@ -55,6 +53,7 @@ async def setup_test_env():
       2. Reset the DB schema.
       3. Seed the test Organisation row (required by FK constraints).
     """
+
     # Bypass JWT user lookup so every protected endpoint returns the test user
     async def _mock_user() -> User:
         return _test_user

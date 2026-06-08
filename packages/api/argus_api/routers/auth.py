@@ -41,7 +41,7 @@ async def get_me(user: User = Depends(get_current_user)) -> dict:
         "email": user.email,
         "avatar_url": user.avatar_url,
         "role": user.role,
-        "org_id": str(user.org_id)
+        "org_id": str(user.org_id),
     }
 
 
@@ -49,7 +49,7 @@ async def get_me(user: User = Depends(get_current_user)) -> dict:
 async def github_login():
     if not settings.github_client_id:
         raise HTTPException(status_code=500, detail="GitHub Client ID not configured")
-    
+
     redirect_uri = f"https://github.com/login/oauth/authorize?client_id={settings.github_client_id}&scope=user:email"
     return RedirectResponse(redirect_uri)
 
@@ -82,12 +82,11 @@ async def github_callback(
 
         # Fetch user profile
         user_res = await client.get(
-            "https://api.github.com/user",
-            headers={"Authorization": f"Bearer {access_token}"}
+            "https://api.github.com/user", headers={"Authorization": f"Bearer {access_token}"}
         )
         if user_res.status_code != 200:
             raise HTTPException(status_code=400, detail="Failed to fetch user profile")
-        
+
         user_profile = user_res.json()
         github_id = user_profile.get("id")
         github_login = user_profile.get("login")
@@ -97,25 +96,19 @@ async def github_callback(
         # Upsert Organization (Personal Workspace for now)
         org_name = f"{github_login}'s Workspace"
         org_result = await session.execute(
-            select(Organization).where(
-                Organization.github_org_login == github_login
-            )
+            select(Organization).where(Organization.github_org_login == github_login)
         )
         org = org_result.scalar_one_or_none()
-        
+
         if not org:
-            org = Organization(
-                name=org_name,
-                github_org_login=github_login,
-                plan="free"
-            )
+            org = Organization(name=org_name, github_org_login=github_login, plan="free")
             session.add(org)
             await session.flush()
-        
+
         # Upsert User
         user_result = await session.execute(select(User).where(User.github_id == github_id))
         user = user_result.scalar_one_or_none()
-        
+
         if not user:
             user = User(
                 org_id=org.id,
@@ -123,22 +116,24 @@ async def github_callback(
                 github_login=github_login,
                 email=email,
                 avatar_url=avatar_url,
-                role="owner"
+                role="owner",
             )
             session.add(user)
         else:
             user.github_login = github_login
             user.email = email
             user.avatar_url = avatar_url
-            
+
         await session.commit()
         await session.refresh(user)
 
         # Generate JWT token
         jwt_token = create_access_token({"sub": str(user.id), "github_login": user.github_login})
-        
+
         # Redirect back to frontend
-        frontend_url = settings.cors_origins[0] if settings.cors_origins else "http://localhost:5173"
+        frontend_url = (
+            settings.cors_origins[0] if settings.cors_origins else "http://localhost:5173"
+        )
         redirect_res = RedirectResponse(url=frontend_url)
         redirect_res.set_cookie(
             key="argus_session",

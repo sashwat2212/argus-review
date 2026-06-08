@@ -170,12 +170,11 @@ async def test_analytics_requires_auth(path: str):
 
     app.dependency_overrides.pop(get_current_user, None)
     try:
-        async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             resp = await client.get(f"/api/v1/analytics{path}")
         assert resp.status_code == 401, f"{path} should require auth"
     finally:
+
         async def _mock_user():
             return _test_user
 

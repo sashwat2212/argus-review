@@ -28,6 +28,7 @@ is_prod = os.environ.get("ENV", "development") == "production"
 setup_logging(json_logs=is_prod)
 logger = structlog.get_logger(__name__)
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Initializing database...")
@@ -35,6 +36,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Application startup complete.")
     yield
     logger.info("Application shutdown.")
+
 
 app = FastAPI(title="Argus API", version="0.1.0", lifespan=lifespan)
 

@@ -21,13 +21,17 @@ async def list_repositories(
     current_user: User = Depends(get_current_user),
 ) -> list[Repository]:
     rows = (
-        await session.execute(
-            select(Repository).where(
-                Repository.org_id == current_user.org_id,
-                Repository.is_active.is_(True),
+        (
+            await session.execute(
+                select(Repository).where(
+                    Repository.org_id == current_user.org_id,
+                    Repository.is_active.is_(True),
+                )
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     return list(rows)
 
 

@@ -29,12 +29,9 @@ def run_review_task(
 ) -> None:
     """Fetch diff, run the review engine, persist findings, post GitHub comments."""
     from argus_api.database import engine
-    
+
     log = logger.bind(
-        task_id=self.request.id,
-        review_id=review_id,
-        repo=repo_full_name,
-        head_sha=head_sha
+        task_id=self.request.id, review_id=review_id, repo=repo_full_name, head_sha=head_sha
     )
     log.info("Starting review task")
 
@@ -95,7 +92,7 @@ async def _async_run_review(
         "Authorization": f"Bearer {token}",
         "Accept": "application/vnd.github.v3.diff",
     }
-    
+
     start_time = datetime.utcnow()
     async with httpx.AsyncClient() as client:
         resp = await client.get(pr_diff_url, headers=diff_headers, follow_redirects=True)
@@ -111,7 +108,7 @@ async def _async_run_review(
         anthropic_model=settings.argus_anthropic_model,
     )
     engine = ReviewEngine(core_cfg)
-    
+
     log.info("Running Review Engine", backend=settings.argus_llm_backend)
     engine_start = datetime.utcnow()
     result = await engine.review_diff(raw_diff)
@@ -178,14 +175,12 @@ async def _async_run_review(
 
     commit_state = "success" if result.score >= 70 else "failure"
     commit_desc = f"Score {result.score}/100 — {len(result.findings)} finding(s)"
-    status_ok = await set_commit_status(
-        token, repo_full_name, head_sha, commit_state, commit_desc
-    )
+    status_ok = await set_commit_status(token, repo_full_name, head_sha, commit_state, commit_desc)
     log.info("Set commit status", status_ok=status_ok, commit_state=commit_state)
 
     gh_status = "success" if (review_ok and status_ok) else "failed"
     await _update_review_status(review_id, "completed", github_comment_status=gh_status)
-    
+
     total_duration = (datetime.utcnow() - start_time).total_seconds()
     log.info("Review task completely finished", total_duration_sec=total_duration)
 

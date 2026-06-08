@@ -12,6 +12,7 @@ def config_loggers(*args, **kwds):
     is_prod = os.environ.get("ENV", "development") == "production"
     setup_logging(json_logs=is_prod)
 
+
 celery_app = Celery(
     "argus",
     broker=settings.redis_url,
