@@ -16,10 +16,10 @@ def get_llm(config: CoreConfig) -> BaseChatModel:
 
         api_key = os.environ.get("ANTHROPIC_API_KEY") or config.anthropic_api_key
         return ChatAnthropic(
-            model=config.anthropic_model,
+            model_name=config.anthropic_model,  # type: ignore[call-arg]
             api_key=api_key,  # type: ignore[arg-type]
             temperature=0.1,
-            max_tokens=4096,
+            max_tokens_to_sample=4096,
         )
 
     from langchain_ollama import ChatOllama

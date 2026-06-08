@@ -112,7 +112,7 @@ async def _merge_group(group: list[Finding], llm: BaseChatModel) -> list[Finding
     try:
         prompt = build_merge_prompt(to_merge)
         response = await llm.ainvoke(prompt)
-        data = _parse_merge_response(response.content)
+        data = _parse_merge_response(str(response.content))
     except Exception as exc:
         logger.warning("Synthesis merge LLM call failed: %s — keeping all findings", exc)
         return group

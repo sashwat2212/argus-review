@@ -41,7 +41,7 @@ def build_review_graph(llm: BaseChatModel, config: CoreConfig | None = None):
             logger.error("Quality agent raised for %s: %s", chunk.file_path, quality_result)
             errors.append(f"quality_agent {chunk.file_path}:{chunk.start_line}: {quality_result}")
         else:
-            q_findings, q_errors = quality_result
+            q_findings, q_errors = quality_result  # type: ignore[misc]
             quality_findings.extend(q_findings)
             errors.extend(q_errors)
 
@@ -49,7 +49,7 @@ def build_review_graph(llm: BaseChatModel, config: CoreConfig | None = None):
             logger.error("Security agent raised for %s: %s", chunk.file_path, security_result)
             errors.append(f"security_agent {chunk.file_path}:{chunk.start_line}: {security_result}")
         else:
-            s_findings, s_errors = security_result
+            s_findings, s_errors = security_result  # type: ignore[misc]
             security_findings.extend(s_findings)
             errors.extend(s_errors)
 
