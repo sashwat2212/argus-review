@@ -24,7 +24,7 @@ REDIS_URL=redis://localhost:6380/0
 
 # Auth
 SECRET_KEY=super-secret-dev-key-change-in-prod
-ARGUS_API_KEY=argus-dev-key
+API_KEY=argus-dev-key
 
 # GitHub OAuth App (create at https://github.com/settings/developers)
 GITHUB_CLIENT_ID=<your_oauth_app_client_id>
@@ -92,7 +92,9 @@ docker compose exec redis redis-cli ping
 ### 1.4 Run database migrations
 
 ```powershell
+cd packages\api
 uv run alembic upgrade head
+cd ..\..
 ```
 **Expected:** Lines like `Running upgrade ... -> ..., <migration name>` with no errors.
 
@@ -146,14 +148,14 @@ uv run uvicorn argus_api.main:app --reload --host 0.0.0.0 --port 8000
 ### 3.2 Health check
 
 ```powershell
-curl http://localhost:8000/health
+curl.exe http://localhost:8000/health
 ```
 **Expected:** `{"status":"ok"}` (HTTP 200)
 
 ### 3.3 Prometheus metrics endpoint
 
 ```powershell
-curl http://localhost:8000/metrics | Select-String "http_requests"
+curl.exe http://localhost:8000/metrics | Select-String "http_requests"
 ```
 **Expected:** Lines of Prometheus metric output.
 
@@ -174,20 +176,20 @@ Open http://localhost:8000/docs in your browser.
 
 ```powershell
 # Should return 401 with no cookie/token
-curl -s http://localhost:8000/api/v1/reviews | python -m json.tool
+curl.exe -s http://localhost:8000/api/v1/reviews | python -m json.tool
 ```
 **Expected:** `{"detail":"Not authenticated"}` (HTTP 401)
 
 ```powershell
 # Should return 401 with wrong API key
-curl -s http://localhost:8000/api/v1/auth/verify `
+curl.exe -s http://localhost:8000/api/v1/auth/verify `
   -H "Authorization: Bearer wrong-key" | python -m json.tool
 ```
 **Expected:** `{"detail":"Invalid or missing API key"}` (HTTP 401)
 
 ```powershell
 # Should return 200 with correct API key
-curl -s http://localhost:8000/api/v1/auth/verify `
+curl.exe -s http://localhost:8000/api/v1/auth/verify `
   -H "Authorization: Bearer argus-dev-key" | python -m json.tool
 ```
 **Expected:** `{"status":"ok"}` (HTTP 200)
@@ -249,7 +251,7 @@ http://localhost:8000/api/v1/auth/me
 ### 4.6 Test logout
 
 ```powershell
-curl -s -X POST http://localhost:8000/api/v1/auth/logout `
+curl.exe -s -X POST http://localhost:8000/api/v1/auth/logout `
   --cookie "argus_session=<paste_your_jwt>" | python -m json.tool
 ```
 **Expected:** `{"status":"logged out"}` and the cookie is cleared (Set-Cookie header with `Max-Age=0`).
@@ -267,7 +269,7 @@ $COOKIE = "argus_session=<paste_your_jwt_here>"
 
 ### 5.1 Overview stats
 ```powershell
-curl -s http://localhost:8000/api/v1/analytics/overview `
+curl.exe -s http://localhost:8000/api/v1/analytics/overview `
   --cookie $COOKIE | python -m json.tool
 ```
 **Expected:** 
@@ -285,63 +287,63 @@ curl -s http://localhost:8000/api/v1/analytics/overview `
 
 ### 5.2 Score trend
 ```powershell
-curl -s "http://localhost:8000/api/v1/analytics/score-trend?limit=30" `
+curl.exe -s "http://localhost:8000/api/v1/analytics/score-trend?limit=30" `
   --cookie $COOKIE | python -m json.tool
 ```
 **Expected:** `[]` (empty array if no completed reviews yet)
 
 ### 5.3 Severity breakdown
 ```powershell
-curl -s http://localhost:8000/api/v1/analytics/severity-breakdown `
+curl.exe -s http://localhost:8000/api/v1/analytics/severity-breakdown `
   --cookie $COOKIE | python -m json.tool
 ```
 **Expected:** `[]`
 
 ### 5.4 Top categories
 ```powershell
-curl -s http://localhost:8000/api/v1/analytics/top-categories `
+curl.exe -s http://localhost:8000/api/v1/analytics/top-categories `
   --cookie $COOKIE | python -m json.tool
 ```
 **Expected:** `[]`
 
 ### 5.5 Repository health
 ```powershell
-curl -s http://localhost:8000/api/v1/analytics/repository-health `
+curl.exe -s http://localhost:8000/api/v1/analytics/repository-health `
   --cookie $COOKIE | python -m json.tool
 ```
 **Expected:** `[]`
 
 ### 5.6 Agent breakdown
 ```powershell
-curl -s http://localhost:8000/api/v1/analytics/agent-breakdown `
+curl.exe -s http://localhost:8000/api/v1/analytics/agent-breakdown `
   --cookie $COOKIE | python -m json.tool
 ```
 **Expected:** `[]`
 
 ### 5.7 Finding velocity
 ```powershell
-curl -s "http://localhost:8000/api/v1/analytics/finding-velocity?days=14" `
+curl.exe -s "http://localhost:8000/api/v1/analytics/finding-velocity?days=14" `
   --cookie $COOKIE | python -m json.tool
 ```
 **Expected:** Array of 14 date entries, all with `"opened": 0, "resolved": 0`
 
 ### 5.8 Score distribution
 ```powershell
-curl -s http://localhost:8000/api/v1/analytics/score-distribution `
+curl.exe -s http://localhost:8000/api/v1/analytics/score-distribution `
   --cookie $COOKIE | python -m json.tool
 ```
 **Expected:** 5 band entries, all `"count": 0`
 
 ### 5.9 Top files
 ```powershell
-curl -s "http://localhost:8000/api/v1/analytics/top-files?limit=10" `
+curl.exe -s "http://localhost:8000/api/v1/analytics/top-files?limit=10" `
   --cookie $COOKIE | python -m json.tool
 ```
 **Expected:** `[]`
 
 ### 5.10 Review duration
 ```powershell
-curl -s http://localhost:8000/api/v1/analytics/review-duration `
+curl.exe -s http://localhost:8000/api/v1/analytics/review-duration `
   --cookie $COOKIE | python -m json.tool
 ```
 **Expected:** `{"avg_seconds": null, "min_seconds": null, "max_seconds": null}`
@@ -637,7 +639,7 @@ docker compose ps
 ### 9.5 Health check via containerized API
 
 ```powershell
-curl http://localhost:8000/health
+curl.exe http://localhost:8000/health
 ```
 **Expected:** `{"status":"ok"}`
 
@@ -652,7 +654,7 @@ Open http://localhost:3000 in your browser.
 ### 9.7 API proxy through nginx
 
 ```powershell
-curl -s http://localhost:3000/api/v1/auth/verify `
+curl.exe -s http://localhost:3000/api/v1/auth/verify `
   -H "Authorization: Bearer argus-dev-key" | python -m json.tool
 ```
 **Expected:** `{"status":"ok"}` — the request was proxied from nginx → API container.
@@ -698,11 +700,11 @@ Use this for fast re-verification after any code change:
 |---|---|---|---|
 | 1 | Postgres up | `docker compose exec postgres pg_isready -U argus` | `accepting connections` |
 | 2 | Redis up | `docker compose exec redis redis-cli ping` | `PONG` |
-| 3 | API health | `curl localhost:8000/health` | `{"status":"ok"}` |
-| 4 | Auth verify (API key) | `curl localhost:8000/api/v1/auth/verify -H "Authorization: Bearer argus-dev-key"` | `{"status":"ok"}` |
-| 5 | Auth blocks unauthenticated | `curl localhost:8000/api/v1/reviews` | HTTP 401 |
+| 3 | API health | `curl.exe localhost:8000/health` | `{"status":"ok"}` |
+| 4 | Auth verify (API key) | `curl.exe localhost:8000/api/v1/auth/verify -H "Authorization: Bearer argus-dev-key"` | `{"status":"ok"}` |
+| 5 | Auth blocks unauthenticated | `curl.exe localhost:8000/api/v1/reviews` | HTTP 401 |
 | 6 | GitHub OAuth login | Browser → `localhost:8000/api/v1/auth/github/login` | Redirects to GitHub |
-| 7 | Analytics overview | `curl localhost:8000/api/v1/analytics/overview --cookie argus_session=...` | JSON with stats |
+| 7 | Analytics overview | `curl.exe localhost:8000/api/v1/analytics/overview --cookie argus_session=...` | JSON with stats |
 | 8 | Celery worker | Webhook POST → check worker logs | `run_review_task received` |
 | 9 | Dashboard login page | Browser → `localhost:5173` | Login page renders |
 | 10 | Dashboard after login | Navigate to `/` | Stat cards render |

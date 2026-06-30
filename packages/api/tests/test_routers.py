@@ -6,7 +6,7 @@ import pytest
 from argus_api.main import app
 from httpx import ASGITransport, AsyncClient
 
-from tests.conftest import AUTH_HEADERS, TEST_ORG_ID
+from conftest import AUTH_HEADERS, TEST_ORG_ID
 
 
 @pytest.mark.asyncio
@@ -54,7 +54,7 @@ async def test_list_reviews_requires_auth():
             resp = await client.get("/api/v1/reviews")
         assert resp.status_code == 401
     finally:
-        from tests.conftest import _test_user
+        from conftest import _test_user
 
         async def _mock_user():
             return _test_user
@@ -76,7 +76,7 @@ async def test_list_reviews_with_wrong_token():
             )
         assert resp.status_code == 401
     finally:
-        from tests.conftest import _test_user
+        from conftest import _test_user
 
         async def _mock_user():
             return _test_user
