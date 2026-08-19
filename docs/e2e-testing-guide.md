@@ -358,7 +358,7 @@ curl.exe -s http://localhost:8000/api/v1/analytics/review-duration `
 
 ```powershell
 # Terminal 2
-uv run celery -A argus_api.tasks.celery_app worker --loglevel=info --concurrency=2
+uv run celery -A argus_api.tasks.celery_app worker --loglevel=info --pool=solo
 ```
 **Expected:** `celery@<hostname> ready.` with no errors.
 
@@ -417,7 +417,7 @@ Watch Terminal 2 (Celery worker logs). **Expected within 5 seconds:**
 
 ```powershell
 docker compose exec postgres psql -U argus -d argus `
-  -c "SELECT id, pr_number, status, score FROM reviews ORDER BY created_at DESC LIMIT 3;"
+  -c "SELECT id, pr_number, status, score FROM reviews ORDER BY started_at DESC NULLS LAST LIMIT 3;"
 ```
 
 ### 6.7 Verify duplicate delivery is rejected

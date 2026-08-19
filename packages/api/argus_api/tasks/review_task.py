@@ -80,7 +80,7 @@ async def _async_run_review(
     repo_full_name: str,
     log: structlog.BoundLogger,
 ) -> None:
-    await _update_review_status(review_id, "running", started_at=datetime.now(UTC))
+    await _update_review_status(review_id, "running", started_at=datetime.utcnow())
 
     token = settings.github_token
     if token and head_sha and repo_full_name:
@@ -93,7 +93,7 @@ async def _async_run_review(
         "Accept": "application/vnd.github.v3.diff",
     }
 
-    start_time = datetime.now(UTC)
+    start_time = datetime.utcnow()
     async with httpx.AsyncClient() as client:
         resp = await client.get(pr_diff_url, headers=diff_headers, follow_redirects=True)
         resp.raise_for_status()
@@ -110,9 +110,9 @@ async def _async_run_review(
     engine = ReviewEngine(core_cfg)
 
     log.info("Running Review Engine", backend=settings.argus_llm_backend)
-    engine_start = datetime.now(UTC)
+    engine_start = datetime.utcnow()
     result = await engine.review_diff(raw_diff)
-    engine_duration = (datetime.now(UTC) - engine_start).total_seconds()
+    engine_duration = (datetime.utcnow() - engine_start).total_seconds()
     log.info(
         "Review Engine completed",
         duration_sec=engine_duration,
@@ -147,7 +147,7 @@ async def _async_run_review(
         db_review.status = "completed"
         db_review.score = result.score
         db_review.total_findings = len(result.findings)
-        db_review.completed_at = datetime.now(UTC)
+        db_review.completed_at = datetime.utcnow()
         db_review.raw_diff = raw_diff
         pr_number = db_review.pr_number
         await session.commit()
@@ -183,7 +183,7 @@ async def _async_run_review(
     gh_status = "success" if (review_ok and status_ok) else "failed"
     await _update_review_status(review_id, "completed", github_comment_status=gh_status)
 
-    total_duration = (datetime.now(UTC) - start_time).total_seconds()
+    total_duration = (datetime.utcnow() - start_time).total_seconds()
     log.info("Review task completely finished", total_duration_sec=total_duration)
 
 
