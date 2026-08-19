@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     argus_ollama_model: str = "codellama:13b"
     anthropic_api_key: str = ""
     argus_anthropic_model: str = "claude-sonnet-4-6"
+    groq_api_key: str = ""
+    argus_groq_model: str = "llama-3.3-70b-versatile"
 
 
 settings = Settings()
