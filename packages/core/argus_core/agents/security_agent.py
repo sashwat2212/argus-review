@@ -24,13 +24,15 @@ async def run_security_agent(
         try:
             async with sem:
                 response = await llm.ainvoke(prompt)
-            findings = parse_findings_response(response.content, agent="security")
+            findings = parse_findings_response(str(response.content), agent="security")
             logger.info("Security agent: %d findings for %s", len(findings), chunk.file_path)
             return findings, []
         except Exception as exc:
             logger.error(
                 "Security agent error (attempt %d) for %s: %s",
-                attempt + 1, chunk.file_path, exc,
+                attempt + 1,
+                chunk.file_path,
+                exc,
             )
             if attempt == 0:
                 await asyncio.sleep(1)

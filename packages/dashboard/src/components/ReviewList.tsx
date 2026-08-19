@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { api } from '../api/client';
-import { ScoreBadge } from './ScoreBadge';
 import { StatusBadge } from './StatusBadge';
 import { SkeletonCard } from './Skeleton';
 import type { Review } from '../api/types';
@@ -82,7 +81,7 @@ const containerVariants = {
 
 const itemVariants = {
   hidden: { opacity: 0, y: 15 },
-  show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 24 } }
+  show: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 300, damping: 24 } },
 };
 
 interface Props { onSelect: (id: string) => void }

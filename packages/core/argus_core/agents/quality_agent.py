@@ -24,13 +24,15 @@ async def run_quality_agent(
         try:
             async with sem:
                 response = await llm.ainvoke(prompt)
-            findings = parse_findings_response(response.content, agent="quality")
+            findings = parse_findings_response(str(response.content), agent="quality")
             logger.info("Quality agent: %d findings for %s", len(findings), chunk.file_path)
             return findings, []
         except Exception as exc:
             logger.error(
                 "Quality agent error (attempt %d) for %s: %s",
-                attempt + 1, chunk.file_path, exc,
+                attempt + 1,
+                chunk.file_path,
+                exc,
             )
             if attempt == 0:
                 await asyncio.sleep(1)

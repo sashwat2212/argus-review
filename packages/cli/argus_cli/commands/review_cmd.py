@@ -111,6 +111,7 @@ async def _run_review(
 
 def _build_core_config(cfg: dict) -> CoreConfig:
     import os
+
     overrides: dict = {}
     if cfg.get("llm_backend"):
         overrides["llm_backend"] = cfg["llm_backend"]
@@ -162,6 +163,7 @@ def _detect_repo() -> str | None:
 
 def _write_json(path: Path, result: ReviewResult, metadata: dict) -> None:
     from dataclasses import asdict
+
     data = {
         "score": result.score,
         "total_findings": len(result.findings),

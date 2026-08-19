@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { api } from '../api/client';
 
 const BOOT_LOGS = [
   '» [BOOT] Initializing Argus core static analysis engine v1.2.0...',
@@ -29,7 +28,7 @@ export function LoginPage() {
   }, []);
 
   const handleGitHubLogin = () => {
-    const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const apiBase = import.meta.env.VITE_API_URL || '';
     window.location.href = `${apiBase}/api/v1/auth/github/login`;
   };
 

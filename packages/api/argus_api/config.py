@@ -12,13 +12,13 @@ class Settings(BaseSettings):
     api_key: str = "change-me-api-key"
     github_webhook_secret: str = ""
     github_token: str = ""
-    
+
     # OAuth and JWT settings
     github_client_id: str = ""
     github_client_secret: str = ""
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 1440  # 24 hours
-    
+
     cors_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
 
     argus_llm_backend: str = "ollama"
@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     argus_ollama_model: str = "codellama:13b"
     anthropic_api_key: str = ""
     argus_anthropic_model: str = "claude-sonnet-4-6"
+    groq_api_key: str = ""
+    argus_groq_model: str = "llama-3.3-70b-versatile"
 
 
 settings = Settings()

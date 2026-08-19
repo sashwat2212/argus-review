@@ -64,6 +64,7 @@ def test_review_list_out():
 
 def test_review_out_includes_raw_diff():
     import uuid
+
     data = {
         "id": uuid.uuid4(),
         "repo_id": uuid.uuid4(),
@@ -86,6 +87,7 @@ def test_review_out_includes_raw_diff():
 
 def test_review_out_raw_diff_defaults_to_none():
     import uuid
+
     data = {
         "id": uuid.uuid4(),
         "repo_id": uuid.uuid4(),

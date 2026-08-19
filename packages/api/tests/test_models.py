@@ -20,6 +20,7 @@ def event_loop():
 @pytest_asyncio.fixture(scope="session")
 async def engine():
     from argus_api.database import Base
+
     eng = create_async_engine(DATABASE_URL, echo=False)
     async with eng.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

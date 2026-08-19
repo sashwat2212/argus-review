@@ -12,7 +12,7 @@ import pytest  # noqa: E402
 from argus_api.auth_utils import create_access_token  # noqa: E402
 from argus_api.config import settings  # noqa: E402
 from argus_api.database import AsyncSessionLocal, Base, engine  # noqa: E402
-from argus_api.dependencies import get_current_user, require_api_key  # noqa: E402
+from argus_api.dependencies import get_current_user  # noqa: E402
 from argus_api.main import app  # noqa: E402
 from argus_api.models.organization import Organization  # noqa: E402
 from argus_api.models.user import User  # noqa: E402
@@ -36,9 +36,7 @@ _test_user = User(
     role="owner",
 )
 
-TEST_JWT = create_access_token(
-    {"sub": str(TEST_USER_ID), "github_login": "testuser"}
-)
+TEST_JWT = create_access_token({"sub": str(TEST_USER_ID), "github_login": "testuser"})
 AUTH_HEADERS = {"Authorization": f"Bearer {TEST_JWT}"}
 
 
@@ -55,10 +53,8 @@ async def setup_test_env():
       2. Reset the DB schema.
       3. Seed the test Organisation row (required by FK constraints).
     """
-    # Bypass static key check (used by most routers)
-    app.dependency_overrides[require_api_key] = lambda: None
 
-    # Bypass JWT user lookup (used by /auth/me etc.)
+    # Bypass JWT user lookup so every protected endpoint returns the test user
     async def _mock_user() -> User:
         return _test_user
 
@@ -82,5 +78,4 @@ async def setup_test_env():
     yield
 
     # Clean up overrides after each test
-    app.dependency_overrides.pop(require_api_key, None)
     app.dependency_overrides.pop(get_current_user, None)

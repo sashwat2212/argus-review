@@ -4,7 +4,7 @@
 
 **Goal:** Ship API key authentication, a heavy-duty analytics dashboard with charts and navigation, and a Dockerized dashboard service.
 
-**Architecture:** Three independent sections. Auth adds Bearer API key verification to all `/api/v1/` routes (webhooks exempt — they use HMAC). Analytics adds four new aggregation endpoints and a completely redesigned dashboard with dark sidebar, stat cards, Recharts charts, and multi-page navigation. Docker wraps the Vite build in an nginx container.
+**Architecture:** Three independent sections. Auth adds Bearer API key verification to all `/api/v1/` routes (webhooks exempt — they use HMAC). Analytics adds four new aggregation endpoints and a completely wraps the Vite build in an nginx container.
 
 **Tech Stack:** FastAPI, SQLAlchemy aggregations, React Router DOM, Recharts, Tailwind CSS, nginx, Docker multi-stage build
 
@@ -13,6 +13,7 @@
 ## Section E — API Key Authentication
 
 ### File Structure
+
 - Modify: `packages/api/argus_api/config.py` — add `api_key: str` setting
 - Create: `packages/api/argus_api/dependencies.py` — `require_api_key` FastAPI dependency
 - Modify: `packages/api/argus_api/routers/reviews.py` — add `require_api_key` dependency
@@ -28,6 +29,7 @@
 ### Task E1: Add api_key to config and create require_api_key dependency
 
 **Files:**
+
 - Modify: `packages/api/argus_api/config.py`
 - Create: `packages/api/argus_api/dependencies.py`
 - Test: `packages/api/tests/test_routers.py`
@@ -35,6 +37,7 @@
 - [ ] **Step 1: Write the failing test**
 
 Add to `packages/api/tests/test_routers.py`:
+
 ```python
 def test_list_reviews_requires_auth(client):
     """GET /api/v1/reviews with no token should return 401."""
@@ -57,11 +60,13 @@ def test_list_reviews_with_wrong_token(client):
 ```bash
 uv run pytest packages/api/tests/test_routers.py::test_list_reviews_requires_auth -v
 ```
+
 Expected: FAIL (currently returns 200 with no auth).
 
 - [ ] **Step 3: Add `api_key` to Settings**
 
 In `packages/api/argus_api/config.py`, add one field:
+
 ```python
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
@@ -106,21 +111,25 @@ def require_api_key(
 Read `packages/api/tests/conftest.py` to see how `Settings` is configured in tests. The test `test_list_reviews_with_valid_token` passes `"Bearer test-api-key"` — make sure the test fixture sets `settings.api_key = "test-api-key"` or override via env.
 
 If conftest uses `TestClient(app)` directly with no settings override, add this to conftest.py:
+
 ```python
 import os
 os.environ.setdefault("ARGUS_API_KEY", "test-api-key")
 ```
+
 Add that line before `from argus_api.main import app` in conftest.
 
 - [ ] **Step 6: Add dependency to reviews router**
 
 In `packages/api/argus_api/routers/reviews.py`, add import and `Depends`:
+
 ```python
 from fastapi import APIRouter, Depends, HTTPException, Request
 from argus_api.dependencies import require_api_key
 ```
 
 Add `Depends(require_api_key)` to each route:
+
 ```python
 @router.get("", response_model=ReviewListOut)
 @limiter.limit("60/minute")
@@ -158,6 +167,7 @@ async def patch_finding(
 - [ ] **Step 7: Add dependency to repositories router**
 
 In `packages/api/argus_api/routers/repositories.py`, same pattern:
+
 ```python
 from argus_api.dependencies import require_api_key
 
@@ -182,6 +192,7 @@ async def get_repository(
 ```bash
 uv run pytest packages/api/tests/ -v
 ```
+
 Expected: all pass including the three new auth tests.
 
 - [ ] **Step 9: Commit**
@@ -198,6 +209,7 @@ git commit -m "feat: add API key authentication to all /api/v1/ routes"
 ### Task E2: Auth verify endpoint
 
 **Files:**
+
 - Create: `packages/api/argus_api/routers/auth.py`
 - Modify: `packages/api/argus_api/main.py`
 
@@ -221,6 +233,7 @@ async def verify(_auth: None = Depends(require_api_key)) -> dict:
 - [ ] **Step 2: Register auth router in `packages/api/argus_api/main.py`**
 
 Add import and include:
+
 ```python
 from argus_api.routers.auth import router as auth_router
 # ... existing imports ...
@@ -235,6 +248,7 @@ app.include_router(repos_router)
 - [ ] **Step 3: Add `ARGUS_API_KEY` to `.env`**
 
 In the project root `.env`, add:
+
 ```
 ARGUS_API_KEY=argus-dev-key-change-in-prod
 ```
@@ -242,6 +256,7 @@ ARGUS_API_KEY=argus-dev-key-change-in-prod
 - [ ] **Step 4: Add `ARGUS_API_KEY` to `docker-compose.yml` api and worker services**
 
 In `docker-compose.yml`, under `api.environment` and `worker.environment`, add:
+
 ```yaml
 ARGUS_API_KEY: ${ARGUS_API_KEY:-argus-dev-key-change-in-prod}
 ```
@@ -252,11 +267,13 @@ ARGUS_API_KEY: ${ARGUS_API_KEY:-argus-dev-key-change-in-prod}
 curl -s http://localhost:8000/api/v1/auth/verify \
   -H "Authorization: Bearer argus-dev-key-change-in-prod"
 ```
+
 Expected: `{"status":"ok"}`
 
 ```bash
 curl -s http://localhost:8000/api/v1/auth/verify
 ```
+
 Expected: `{"detail":"Invalid or missing API key"}`
 
 - [ ] **Step 6: Commit**
@@ -272,6 +289,7 @@ git commit -m "feat: add /api/v1/auth/verify endpoint and wire ARGUS_API_KEY int
 ### Task E3: Dashboard login gate
 
 **Files:**
+
 - Modify: `packages/dashboard/src/api/client.ts`
 - Create: `packages/dashboard/src/pages/LoginPage.tsx`
 - Modify: `packages/dashboard/src/App.tsx`
@@ -279,11 +297,12 @@ git commit -m "feat: add /api/v1/auth/verify endpoint and wire ARGUS_API_KEY int
 - [ ] **Step 1: Update `packages/dashboard/src/api/client.ts` to send Bearer token**
 
 Replace the entire file:
-```typescript
-import type { Finding, Review, ReviewListOut } from './types';
 
-const BASE = import.meta.env.VITE_API_URL ?? '';
-const STORAGE_KEY = 'argus_api_key';
+```typescript
+import type { Finding, Review, ReviewListOut } from "./types";
+
+const BASE = import.meta.env.VITE_API_URL ?? "";
+const STORAGE_KEY = "argus_api_key";
 
 export function getStoredApiKey(): string | null {
   return localStorage.getItem(STORAGE_KEY);
@@ -301,7 +320,7 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const key = getStoredApiKey();
   const res = await fetch(`${BASE}${path}`, {
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...(key ? { Authorization: `Bearer ${key}` } : {}),
       ...init?.headers,
     },
@@ -310,7 +329,7 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   if (res.status === 401) {
     clearStoredApiKey();
     window.location.reload();
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
   if (!res.ok) throw new Error(`API ${res.status}: ${res.statusText}`);
   return res.json() as Promise<T>;
@@ -320,20 +339,22 @@ export const api = {
   verifyKey: (key: string) =>
     fetch(`${BASE}/api/v1/auth/verify`, {
       headers: { Authorization: `Bearer ${key}` },
-    }).then(r => r.ok),
+    }).then((r) => r.ok),
 
   listReviews: (page = 1, pageSize = 20, status?: string) => {
-    const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
-    if (status) params.set('status', status);
+    const params = new URLSearchParams({
+      page: String(page),
+      page_size: String(pageSize),
+    });
+    if (status) params.set("status", status);
     return apiFetch<ReviewListOut>(`/api/v1/reviews?${params}`);
   },
 
-  getReview: (id: string) =>
-    apiFetch<Review>(`/api/v1/reviews/${id}`),
+  getReview: (id: string) => apiFetch<Review>(`/api/v1/reviews/${id}`),
 
   resolveFinding: (reviewId: string, findingId: string) =>
     apiFetch<Finding>(`/api/v1/reviews/${reviewId}/findings/${findingId}`, {
-      method: 'PATCH',
+      method: "PATCH",
       body: JSON.stringify({ is_resolved: true }),
     }),
 };
@@ -342,19 +363,21 @@ export const api = {
 - [ ] **Step 2: Create `packages/dashboard/src/pages/LoginPage.tsx`**
 
 ```tsx
-import { useState } from 'react';
-import { api, setStoredApiKey } from '../api/client';
+import { useState } from "react";
+import { api, setStoredApiKey } from "../api/client";
 
-interface Props { onSuccess: () => void }
+interface Props {
+  onSuccess: () => void;
+}
 
 export function LoginPage({ onSuccess }: Props) {
-  const [key, setKey] = useState('');
-  const [error, setError] = useState('');
+  const [key, setKey] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
     try {
       const ok = await api.verifyKey(key.trim());
@@ -362,10 +385,10 @@ export function LoginPage({ onSuccess }: Props) {
         setStoredApiKey(key.trim());
         onSuccess();
       } else {
-        setError('Invalid API key. Check your ARGUS_API_KEY in .env.');
+        setError("Invalid API key. Check your ARGUS_API_KEY in .env.");
       }
     } catch {
-      setError('Could not reach the Argus API. Is it running?');
+      setError("Could not reach the Argus API. Is it running?");
     } finally {
       setLoading(false);
     }
@@ -383,11 +406,13 @@ export function LoginPage({ onSuccess }: Props) {
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1">API Key</label>
+            <label className="block text-xs font-medium text-gray-400 mb-1">
+              API Key
+            </label>
             <input
               type="password"
               value={key}
-              onChange={e => setKey(e.target.value)}
+              onChange={(e) => setKey(e.target.value)}
               placeholder="argus-dev-key-..."
               className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500"
               required
@@ -399,7 +424,7 @@ export function LoginPage({ onSuccess }: Props) {
             disabled={loading || !key.trim()}
             className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-medium py-2 rounded-lg transition-colors"
           >
-            {loading ? 'Verifying…' : 'Sign in'}
+            {loading ? "Verifying…" : "Sign in"}
           </button>
         </form>
         <p className="text-xs text-gray-600 mt-6 text-center">
@@ -414,13 +439,14 @@ export function LoginPage({ onSuccess }: Props) {
 - [ ] **Step 3: Update `packages/dashboard/src/App.tsx` to gate behind login**
 
 We'll add auth state in a later task when we add routing. For now, just gate the whole app:
+
 ```tsx
-import { useState } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReviewList } from './components/ReviewList';
-import { ReviewDetail } from './components/ReviewDetail';
-import { LoginPage } from './pages/LoginPage';
-import { getStoredApiKey } from './api/client';
+import { useState } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ReviewList } from "./components/ReviewList";
+import { ReviewDetail } from "./components/ReviewDetail";
+import { LoginPage } from "./pages/LoginPage";
+import { getStoredApiKey } from "./api/client";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 5_000, retry: 1 } },
@@ -442,10 +468,14 @@ export function App() {
           <span className="text-xs text-gray-400">Code Review Engine</span>
         </header>
         <main>
-          {selectedId
-            ? <ReviewDetail reviewId={selectedId} onBack={() => setSelectedId(null)} />
-            : <ReviewList onSelect={setSelectedId} />
-          }
+          {selectedId ? (
+            <ReviewDetail
+              reviewId={selectedId}
+              onBack={() => setSelectedId(null)}
+            />
+          ) : (
+            <ReviewList onSelect={setSelectedId} />
+          )}
         </main>
       </div>
     </QueryClientProvider>
@@ -458,6 +488,7 @@ export function App() {
 ```bash
 cd packages/dashboard && npx tsc --noEmit
 ```
+
 Expected: no errors.
 
 - [ ] **Step 5: Test in browser**
@@ -484,11 +515,13 @@ git commit -m "feat(dashboard): add API key login gate with localStorage persist
 ### File Structure
 
 **New API routes:**
+
 - Create: `packages/api/argus_api/routers/analytics.py` — 4 aggregation endpoints
 - Modify: `packages/api/argus_api/main.py` — register analytics router
 - Modify: `packages/api/argus_api/schemas/review.py` — add analytics response schemas
 
 **Dashboard redesign — full multi-page app with dark sidebar:**
+
 - Create: `packages/dashboard/src/layouts/AppShell.tsx` — dark sidebar + top bar layout
 - Create: `packages/dashboard/src/pages/DashboardPage.tsx` — overview with stat cards + charts
 - Create: `packages/dashboard/src/pages/ReviewsPage.tsx` — reviews list (wraps existing ReviewList/ReviewDetail)
@@ -506,6 +539,7 @@ git commit -m "feat(dashboard): add API key login gate with localStorage persist
 ### Task F1: Analytics API endpoints
 
 **Files:**
+
 - Create: `packages/api/argus_api/routers/analytics.py`
 - Modify: `packages/api/argus_api/main.py`
 - Modify: `packages/api/argus_api/schemas/review.py`
@@ -513,6 +547,7 @@ git commit -m "feat(dashboard): add API key login gate with localStorage persist
 - [ ] **Step 1: Add analytics schemas to `packages/api/argus_api/schemas/review.py`**
 
 Append to the file:
+
 ```python
 class OverviewStats(BaseModel):
     total_reviews: int
@@ -650,6 +685,7 @@ async def get_top_categories(
 - [ ] **Step 3: Register analytics router in `packages/api/argus_api/main.py`**
 
 Add:
+
 ```python
 from argus_api.routers.analytics import router as analytics_router
 # ...
@@ -661,6 +697,7 @@ app.include_router(analytics_router)
 ```bash
 uv run ruff check packages/api/argus_api/routers/analytics.py
 ```
+
 Expected: no errors.
 
 - [ ] **Step 5: Test endpoints manually**
@@ -669,6 +706,7 @@ Expected: no errors.
 curl -s "http://localhost:8000/api/v1/analytics/overview" \
   -H "Authorization: Bearer argus-dev-key-change-in-prod" | python3 -m json.tool
 ```
+
 Expected: JSON with `total_reviews`, `avg_score`, etc.
 
 - [ ] **Step 6: Commit**
@@ -684,12 +722,14 @@ git commit -m "feat: add analytics API endpoints (overview, score-trend, severit
 ### Task F2: Analytics TypeScript types and API client
 
 **Files:**
+
 - Modify: `packages/dashboard/src/api/types.ts`
 - Create: `packages/dashboard/src/api/analytics.ts`
 
 - [ ] **Step 1: Add analytics types to `packages/dashboard/src/api/types.ts`**
 
 Append to the file:
+
 ```typescript
 export interface OverviewStats {
   total_reviews: number;
@@ -720,12 +760,17 @@ export interface CategoryCount {
 - [ ] **Step 2: Create `packages/dashboard/src/api/analytics.ts`**
 
 ```typescript
-import type { CategoryCount, OverviewStats, ScorePoint, SeverityCount } from './types';
+import type {
+  CategoryCount,
+  OverviewStats,
+  ScorePoint,
+  SeverityCount,
+} from "./types";
 
-const BASE = import.meta.env.VITE_API_URL ?? '';
+const BASE = import.meta.env.VITE_API_URL ?? "";
 
 function authHeader(): Record<string, string> {
-  const key = localStorage.getItem('argus_api_key');
+  const key = localStorage.getItem("argus_api_key");
   return key ? { Authorization: `Bearer ${key}` } : {};
 }
 
@@ -736,10 +781,12 @@ async function get<T>(path: string): Promise<T> {
 }
 
 export const analyticsApi = {
-  overview: () => get<OverviewStats>('/api/v1/analytics/overview'),
-  scoreTrend: (limit = 30) => get<ScorePoint[]>(`/api/v1/analytics/score-trend?limit=${limit}`),
-  severityBreakdown: () => get<SeverityCount[]>('/api/v1/analytics/severity-breakdown'),
-  topCategories: () => get<CategoryCount[]>('/api/v1/analytics/top-categories'),
+  overview: () => get<OverviewStats>("/api/v1/analytics/overview"),
+  scoreTrend: (limit = 30) =>
+    get<ScorePoint[]>(`/api/v1/analytics/score-trend?limit=${limit}`),
+  severityBreakdown: () =>
+    get<SeverityCount[]>("/api/v1/analytics/severity-breakdown"),
+  topCategories: () => get<CategoryCount[]>("/api/v1/analytics/top-categories"),
 };
 ```
 
@@ -748,6 +795,7 @@ export const analyticsApi = {
 ```bash
 cd packages/dashboard && npx tsc --noEmit
 ```
+
 Expected: no errors.
 
 - [ ] **Step 4: Commit**
@@ -762,6 +810,7 @@ git commit -m "feat(dashboard): add analytics TypeScript types and API client"
 ### Task F3: StatCard component
 
 **Files:**
+
 - Create: `packages/dashboard/src/components/StatCard.tsx`
 
 - [ ] **Step 1: Create `packages/dashboard/src/components/StatCard.tsx`**
@@ -772,44 +821,54 @@ interface Props {
   value: string | number;
   sub?: string;
   icon: string;
-  trend?: 'up' | 'down' | 'neutral';
-  color: 'blue' | 'green' | 'yellow' | 'red' | 'purple';
+  trend?: "up" | "down" | "neutral";
+  color: "blue" | "green" | "yellow" | "red" | "purple";
 }
 
-const BG: Record<Props['color'], string> = {
-  blue:   'bg-blue-500/10 border-blue-500/20',
-  green:  'bg-green-500/10 border-green-500/20',
-  yellow: 'bg-yellow-500/10 border-yellow-500/20',
-  red:    'bg-red-500/10 border-red-500/20',
-  purple: 'bg-purple-500/10 border-purple-500/20',
+const BG: Record<Props["color"], string> = {
+  blue: "bg-blue-500/10 border-blue-500/20",
+  green: "bg-green-500/10 border-green-500/20",
+  yellow: "bg-yellow-500/10 border-yellow-500/20",
+  red: "bg-red-500/10 border-red-500/20",
+  purple: "bg-purple-500/10 border-purple-500/20",
 };
 
-const ICON_BG: Record<Props['color'], string> = {
-  blue:   'bg-blue-500/20 text-blue-400',
-  green:  'bg-green-500/20 text-green-400',
-  yellow: 'bg-yellow-500/20 text-yellow-400',
-  red:    'bg-red-500/20 text-red-400',
-  purple: 'bg-purple-500/20 text-purple-400',
+const ICON_BG: Record<Props["color"], string> = {
+  blue: "bg-blue-500/20 text-blue-400",
+  green: "bg-green-500/20 text-green-400",
+  yellow: "bg-yellow-500/20 text-yellow-400",
+  red: "bg-red-500/20 text-red-400",
+  purple: "bg-purple-500/20 text-purple-400",
 };
 
-const TREND_ICON = { up: '↑', down: '↓', neutral: '→' };
-const TREND_COLOR = { up: 'text-green-400', down: 'text-red-400', neutral: 'text-gray-400' };
+const TREND_ICON = { up: "↑", down: "↓", neutral: "→" };
+const TREND_COLOR = {
+  up: "text-green-400",
+  down: "text-red-400",
+  neutral: "text-gray-400",
+};
 
 export function StatCard({ label, value, sub, icon, trend, color }: Props) {
   return (
     <div className={`rounded-xl border p-5 ${BG[color]}`}>
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">{label}</p>
+          <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+            {label}
+          </p>
           <p className="text-3xl font-bold text-white mt-1">{value}</p>
           {sub && (
-            <p className={`text-xs mt-1 ${trend ? TREND_COLOR[trend] : 'text-gray-500'}`}>
+            <p
+              className={`text-xs mt-1 ${trend ? TREND_COLOR[trend] : "text-gray-500"}`}
+            >
               {trend && <span className="mr-1">{TREND_ICON[trend]}</span>}
               {sub}
             </p>
           )}
         </div>
-        <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg ${ICON_BG[color]}`}>
+        <div
+          className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg ${ICON_BG[color]}`}
+        >
           {icon}
         </div>
       </div>
@@ -830,6 +889,7 @@ git commit -m "feat(dashboard): add StatCard component"
 ### Task F4: Recharts chart components
 
 **Files:**
+
 - Create: `packages/dashboard/src/components/ScoreTrendChart.tsx`
 - Create: `packages/dashboard/src/components/SeverityDonutChart.tsx`
 - Create: `packages/dashboard/src/components/TopCategoriesChart.tsx`
@@ -838,12 +898,20 @@ git commit -m "feat(dashboard): add StatCard component"
 
 ```tsx
 import {
-  CartesianGrid, Line, LineChart, ReferenceLine,
-  ResponsiveContainer, Tooltip, XAxis, YAxis,
-} from 'recharts';
-import type { ScorePoint } from '../api/types';
+  CartesianGrid,
+  Line,
+  LineChart,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import type { ScorePoint } from "../api/types";
 
-interface Props { data: ScorePoint[] }
+interface Props {
+  data: ScorePoint[];
+}
 
 export function ScoreTrendChart({ data }: Props) {
   if (data.length === 0) {
@@ -859,31 +927,40 @@ export function ScoreTrendChart({ data }: Props) {
         <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
         <XAxis
           dataKey="date"
-          tick={{ fill: '#9CA3AF', fontSize: 11 }}
+          tick={{ fill: "#9CA3AF", fontSize: 11 }}
           tickLine={false}
           axisLine={false}
         />
         <YAxis
           domain={[0, 100]}
-          tick={{ fill: '#9CA3AF', fontSize: 11 }}
+          tick={{ fill: "#9CA3AF", fontSize: 11 }}
           tickLine={false}
           axisLine={false}
           width={28}
         />
         <Tooltip
-          contentStyle={{ background: '#1F2937', border: '1px solid #374151', borderRadius: 8 }}
-          labelStyle={{ color: '#E5E7EB', fontSize: 12 }}
-          itemStyle={{ color: '#60A5FA' }}
-          formatter={(val: number) => [`${val}/100`, 'Score']}
+          contentStyle={{
+            background: "#1F2937",
+            border: "1px solid #374151",
+            borderRadius: 8,
+          }}
+          labelStyle={{ color: "#E5E7EB", fontSize: 12 }}
+          itemStyle={{ color: "#60A5FA" }}
+          formatter={(val: number) => [`${val}/100`, "Score"]}
         />
-        <ReferenceLine y={70} stroke="#F59E0B" strokeDasharray="4 4" label={{ value: 'Pass', fill: '#F59E0B', fontSize: 10 }} />
+        <ReferenceLine
+          y={70}
+          stroke="#F59E0B"
+          strokeDasharray="4 4"
+          label={{ value: "Pass", fill: "#F59E0B", fontSize: 10 }}
+        />
         <Line
           type="monotone"
           dataKey="score"
           stroke="#3B82F6"
           strokeWidth={2}
-          dot={{ fill: '#3B82F6', r: 3 }}
-          activeDot={{ r: 5, fill: '#60A5FA' }}
+          dot={{ fill: "#3B82F6", r: 3 }}
+          activeDot={{ r: 5, fill: "#60A5FA" }}
         />
       </LineChart>
     </ResponsiveContainer>
@@ -894,17 +971,26 @@ export function ScoreTrendChart({ data }: Props) {
 - [ ] **Step 2: Create `packages/dashboard/src/components/SeverityDonutChart.tsx`**
 
 ```tsx
-import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
-import type { SeverityCount } from '../api/types';
+import {
+  Cell,
+  Legend,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+} from "recharts";
+import type { SeverityCount } from "../api/types";
 
-interface Props { data: SeverityCount[] }
+interface Props {
+  data: SeverityCount[];
+}
 
 const COLORS: Record<string, string> = {
-  critical: '#EF4444',
-  high:     '#F97316',
-  medium:   '#EAB308',
-  low:      '#3B82F6',
-  info:     '#6B7280',
+  critical: "#EF4444",
+  high: "#F97316",
+  medium: "#EAB308",
+  low: "#3B82F6",
+  info: "#6B7280",
 };
 
 export function SeverityDonutChart({ data }: Props) {
@@ -930,19 +1016,23 @@ export function SeverityDonutChart({ data }: Props) {
             outerRadius={85}
             paddingAngle={2}
           >
-            {data.map(d => (
-              <Cell key={d.severity} fill={COLORS[d.severity] ?? '#6B7280'} />
+            {data.map((d) => (
+              <Cell key={d.severity} fill={COLORS[d.severity] ?? "#6B7280"} />
             ))}
           </Pie>
           <Tooltip
-            contentStyle={{ background: '#1F2937', border: '1px solid #374151', borderRadius: 8 }}
-            itemStyle={{ color: '#E5E7EB', fontSize: 12 }}
+            contentStyle={{
+              background: "#1F2937",
+              border: "1px solid #374151",
+              borderRadius: 8,
+            }}
+            itemStyle={{ color: "#E5E7EB", fontSize: 12 }}
           />
           <Legend
             iconType="circle"
             iconSize={8}
             formatter={(value: string) => (
-              <span style={{ color: '#9CA3AF', fontSize: 12 }}>{value}</span>
+              <span style={{ color: "#9CA3AF", fontSize: 12 }}>{value}</span>
             )}
           />
         </PieChart>
@@ -961,12 +1051,34 @@ export function SeverityDonutChart({ data }: Props) {
 - [ ] **Step 3: Create `packages/dashboard/src/components/TopCategoriesChart.tsx`**
 
 ```tsx
-import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import type { CategoryCount } from '../api/types';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import type { CategoryCount } from "../api/types";
 
-interface Props { data: CategoryCount[] }
+interface Props {
+  data: CategoryCount[];
+}
 
-const BAR_COLORS = ['#3B82F6', '#8B5CF6', '#06B6D4', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#F97316', '#84CC16', '#6B7280'];
+const BAR_COLORS = [
+  "#3B82F6",
+  "#8B5CF6",
+  "#06B6D4",
+  "#10B981",
+  "#F59E0B",
+  "#EF4444",
+  "#EC4899",
+  "#F97316",
+  "#84CC16",
+  "#6B7280",
+];
 
 export function TopCategoriesChart({ data }: Props) {
   if (data.length === 0) {
@@ -978,26 +1090,38 @@ export function TopCategoriesChart({ data }: Props) {
   }
   return (
     <ResponsiveContainer width="100%" height={220}>
-      <BarChart data={data} layout="vertical" margin={{ top: 0, right: 16, left: 0, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#374151" horizontal={false} />
+      <BarChart
+        data={data}
+        layout="vertical"
+        margin={{ top: 0, right: 16, left: 0, bottom: 0 }}
+      >
+        <CartesianGrid
+          strokeDasharray="3 3"
+          stroke="#374151"
+          horizontal={false}
+        />
         <XAxis
           type="number"
-          tick={{ fill: '#9CA3AF', fontSize: 11 }}
+          tick={{ fill: "#9CA3AF", fontSize: 11 }}
           tickLine={false}
           axisLine={false}
         />
         <YAxis
           type="category"
           dataKey="category"
-          tick={{ fill: '#9CA3AF', fontSize: 11 }}
+          tick={{ fill: "#9CA3AF", fontSize: 11 }}
           tickLine={false}
           axisLine={false}
           width={110}
         />
         <Tooltip
-          contentStyle={{ background: '#1F2937', border: '1px solid #374151', borderRadius: 8 }}
-          itemStyle={{ color: '#E5E7EB', fontSize: 12 }}
-          cursor={{ fill: 'rgba(255,255,255,0.04)' }}
+          contentStyle={{
+            background: "#1F2937",
+            border: "1px solid #374151",
+            borderRadius: 8,
+          }}
+          itemStyle={{ color: "#E5E7EB", fontSize: 12 }}
+          cursor={{ fill: "rgba(255,255,255,0.04)" }}
         />
         <Bar dataKey="count" radius={[0, 4, 4, 0]}>
           {data.map((_, i) => (
@@ -1015,6 +1139,7 @@ export function TopCategoriesChart({ data }: Props) {
 ```bash
 cd packages/dashboard && npx tsc --noEmit
 ```
+
 Expected: no errors.
 
 - [ ] **Step 5: Commit**
@@ -1031,19 +1156,23 @@ git commit -m "feat(dashboard): add Recharts chart components for analytics"
 ### Task F5: AppShell layout with dark sidebar
 
 **Files:**
+
 - Create: `packages/dashboard/src/layouts/AppShell.tsx`
 
 - [ ] **Step 1: Create `packages/dashboard/src/layouts/AppShell.tsx`**
 
 ```tsx
-import { NavLink } from 'react-router-dom';
+import { NavLink } from "react-router-dom";
 
-interface Props { children: React.ReactNode; onLogout: () => void }
+interface Props {
+  children: React.ReactNode;
+  onLogout: () => void;
+}
 
 const NAV = [
-  { to: '/',             icon: '📊', label: 'Dashboard' },
-  { to: '/reviews',      icon: '🔍', label: 'Reviews'   },
-  { to: '/repositories', icon: '📁', label: 'Repos'     },
+  { to: "/", icon: "📊", label: "Dashboard" },
+  { to: "/reviews", icon: "🔍", label: "Reviews" },
+  { to: "/repositories", icon: "📁", label: "Repos" },
 ];
 
 export function AppShell({ children, onLogout }: Props) {
@@ -1068,12 +1197,12 @@ export function AppShell({ children, onLogout }: Props) {
             <NavLink
               key={to}
               to={to}
-              end={to === '/'}
+              end={to === "/"}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                   isActive
-                    ? 'bg-blue-600/20 text-blue-400'
-                    : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                    ? "bg-blue-600/20 text-blue-400"
+                    : "text-gray-400 hover:text-white hover:bg-gray-800"
                 }`
               }
             >
@@ -1096,9 +1225,7 @@ export function AppShell({ children, onLogout }: Props) {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-y-auto">
-        {children}
-      </main>
+      <main className="flex-1 overflow-y-auto">{children}</main>
     </div>
   );
 }
@@ -1116,23 +1243,37 @@ git commit -m "feat(dashboard): add dark sidebar AppShell layout"
 ### Task F6: DashboardPage with stat cards and charts
 
 **Files:**
+
 - Create: `packages/dashboard/src/pages/DashboardPage.tsx`
 
 - [ ] **Step 1: Create `packages/dashboard/src/pages/DashboardPage.tsx`**
 
 ```tsx
-import { useQuery } from '@tanstack/react-query';
-import { analyticsApi } from '../api/analytics';
-import { ScoreTrendChart } from '../components/ScoreTrendChart';
-import { SeverityDonutChart } from '../components/SeverityDonutChart';
-import { StatCard } from '../components/StatCard';
-import { TopCategoriesChart } from '../components/TopCategoriesChart';
+import { useQuery } from "@tanstack/react-query";
+import { analyticsApi } from "../api/analytics";
+import { ScoreTrendChart } from "../components/ScoreTrendChart";
+import { SeverityDonutChart } from "../components/SeverityDonutChart";
+import { StatCard } from "../components/StatCard";
+import { TopCategoriesChart } from "../components/TopCategoriesChart";
 
 export function DashboardPage() {
-  const overview = useQuery({ queryKey: ['analytics', 'overview'], queryFn: analyticsApi.overview, refetchInterval: 30_000 });
-  const trend    = useQuery({ queryKey: ['analytics', 'trend'],    queryFn: () => analyticsApi.scoreTrend(30) });
-  const severity = useQuery({ queryKey: ['analytics', 'severity'], queryFn: analyticsApi.severityBreakdown });
-  const categories = useQuery({ queryKey: ['analytics', 'categories'], queryFn: analyticsApi.topCategories });
+  const overview = useQuery({
+    queryKey: ["analytics", "overview"],
+    queryFn: analyticsApi.overview,
+    refetchInterval: 30_000,
+  });
+  const trend = useQuery({
+    queryKey: ["analytics", "trend"],
+    queryFn: () => analyticsApi.scoreTrend(30),
+  });
+  const severity = useQuery({
+    queryKey: ["analytics", "severity"],
+    queryFn: analyticsApi.severityBreakdown,
+  });
+  const categories = useQuery({
+    queryKey: ["analytics", "categories"],
+    queryFn: analyticsApi.topCategories,
+  });
 
   const stats = overview.data;
 
@@ -1141,54 +1282,81 @@ export function DashboardPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-        <p className="text-sm text-gray-400 mt-0.5">Overview of all code reviews and findings</p>
+        <p className="text-sm text-gray-400 mt-0.5">
+          Overview of all code reviews and findings
+        </p>
       </div>
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Total Reviews"
-          value={stats?.total_reviews ?? '—'}
+          value={stats?.total_reviews ?? "—"}
           sub={`${stats?.completed_reviews ?? 0} completed`}
           icon="📋"
           color="blue"
         />
         <StatCard
           label="Avg Score"
-          value={stats?.avg_score != null ? `${stats.avg_score}` : '—'}
+          value={stats?.avg_score != null ? `${stats.avg_score}` : "—"}
           sub="out of 100"
           icon="⭐"
-          color={stats?.avg_score != null
-            ? stats.avg_score >= 80 ? 'green' : stats.avg_score >= 60 ? 'yellow' : 'red'
-            : 'blue'
+          color={
+            stats?.avg_score != null
+              ? stats.avg_score >= 80
+                ? "green"
+                : stats.avg_score >= 60
+                  ? "yellow"
+                  : "red"
+              : "blue"
           }
-          trend={stats?.avg_score != null
-            ? stats.avg_score >= 70 ? 'up' : 'down'
-            : undefined
+          trend={
+            stats?.avg_score != null
+              ? stats.avg_score >= 70
+                ? "up"
+                : "down"
+              : undefined
           }
         />
         <StatCard
           label="Pass Rate"
-          value={stats?.pass_rate != null ? `${Math.round(stats.pass_rate * 100)}%` : '—'}
+          value={
+            stats?.pass_rate != null
+              ? `${Math.round(stats.pass_rate * 100)}%`
+              : "—"
+          }
           sub="score ≥ 70"
           icon="✅"
-          color={stats?.pass_rate != null
-            ? stats.pass_rate >= 0.8 ? 'green' : stats.pass_rate >= 0.5 ? 'yellow' : 'red'
-            : 'blue'
+          color={
+            stats?.pass_rate != null
+              ? stats.pass_rate >= 0.8
+                ? "green"
+                : stats.pass_rate >= 0.5
+                  ? "yellow"
+                  : "red"
+              : "blue"
           }
-          trend={stats?.pass_rate != null
-            ? stats.pass_rate >= 0.7 ? 'up' : 'down'
-            : undefined
+          trend={
+            stats?.pass_rate != null
+              ? stats.pass_rate >= 0.7
+                ? "up"
+                : "down"
+              : undefined
           }
         />
         <StatCard
           label="Open Findings"
-          value={stats?.open_findings ?? '—'}
+          value={stats?.open_findings ?? "—"}
           sub={`of ${stats?.total_findings ?? 0} total`}
           icon="⚠️"
-          color={stats?.open_findings != null
-            ? stats.open_findings === 0 ? 'green' : stats.open_findings < 10 ? 'yellow' : 'red'
-            : 'blue'
+          color={
+            stats?.open_findings != null
+              ? stats.open_findings === 0
+                ? "green"
+                : stats.open_findings < 10
+                  ? "yellow"
+                  : "red"
+              : "blue"
           }
         />
       </div>
@@ -1196,27 +1364,40 @@ export function DashboardPage() {
       {/* Charts row 1: Score trend (full width) */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
         <h2 className="text-sm font-semibold text-white mb-4">Score Trend</h2>
-        {trend.isLoading
-          ? <div className="h-48 flex items-center justify-center text-gray-500 text-sm">Loading…</div>
-          : <ScoreTrendChart data={trend.data ?? []} />
-        }
+        {trend.isLoading ? (
+          <div className="h-48 flex items-center justify-center text-gray-500 text-sm">
+            Loading…
+          </div>
+        ) : (
+          <ScoreTrendChart data={trend.data ?? []} />
+        )}
       </div>
 
       {/* Charts row 2: Severity donut + Top categories side by side */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-          <h2 className="text-sm font-semibold text-white mb-4">Open Findings by Severity</h2>
-          {severity.isLoading
-            ? <div className="h-48 flex items-center justify-center text-gray-500 text-sm">Loading…</div>
-            : <SeverityDonutChart data={severity.data ?? []} />
-          }
+          <h2 className="text-sm font-semibold text-white mb-4">
+            Open Findings by Severity
+          </h2>
+          {severity.isLoading ? (
+            <div className="h-48 flex items-center justify-center text-gray-500 text-sm">
+              Loading…
+            </div>
+          ) : (
+            <SeverityDonutChart data={severity.data ?? []} />
+          )}
         </div>
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-          <h2 className="text-sm font-semibold text-white mb-4">Top Issue Categories</h2>
-          {categories.isLoading
-            ? <div className="h-48 flex items-center justify-center text-gray-500 text-sm">Loading…</div>
-            : <TopCategoriesChart data={categories.data ?? []} />
-          }
+          <h2 className="text-sm font-semibold text-white mb-4">
+            Top Issue Categories
+          </h2>
+          {categories.isLoading ? (
+            <div className="h-48 flex items-center justify-center text-gray-500 text-sm">
+              Loading…
+            </div>
+          ) : (
+            <TopCategoriesChart data={categories.data ?? []} />
+          )}
         </div>
       </div>
     </div>
@@ -1236,21 +1417,24 @@ git commit -m "feat(dashboard): add analytics DashboardPage with stat cards and 
 ### Task F7: ReviewsPage and RepositoriesPage
 
 **Files:**
+
 - Create: `packages/dashboard/src/pages/ReviewsPage.tsx`
 - Create: `packages/dashboard/src/pages/RepositoriesPage.tsx`
 
 - [ ] **Step 1: Create `packages/dashboard/src/pages/ReviewsPage.tsx`**
 
 ```tsx
-import { useState } from 'react';
-import { ReviewDetail } from '../components/ReviewDetail';
-import { ReviewList } from '../components/ReviewList';
+import { useState } from "react";
+import { ReviewDetail } from "../components/ReviewDetail";
+import { ReviewList } from "../components/ReviewList";
 
 export function ReviewsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   if (selectedId) {
-    return <ReviewDetail reviewId={selectedId} onBack={() => setSelectedId(null)} />;
+    return (
+      <ReviewDetail reviewId={selectedId} onBack={() => setSelectedId(null)} />
+    );
   }
   return <ReviewList onSelect={setSelectedId} />;
 }
@@ -1259,9 +1443,9 @@ export function ReviewsPage() {
 - [ ] **Step 2: Create `packages/dashboard/src/pages/RepositoriesPage.tsx`**
 
 ```tsx
-import { useQuery } from '@tanstack/react-query';
+import { useQuery } from "@tanstack/react-query";
 
-const BASE = import.meta.env.VITE_API_URL ?? '';
+const BASE = import.meta.env.VITE_API_URL ?? "";
 
 interface Repo {
   id: string;
@@ -1272,17 +1456,17 @@ interface Repo {
 }
 
 async function fetchRepos(): Promise<Repo[]> {
-  const key = localStorage.getItem('argus_api_key') ?? '';
+  const key = localStorage.getItem("argus_api_key") ?? "";
   const res = await fetch(`${BASE}/api/v1/repositories`, {
     headers: { Authorization: `Bearer ${key}` },
   });
-  if (!res.ok) throw new Error('Failed to fetch repositories');
+  if (!res.ok) throw new Error("Failed to fetch repositories");
   return res.json();
 }
 
 export function RepositoriesPage() {
   const { data, isLoading, error } = useQuery({
-    queryKey: ['repositories'],
+    queryKey: ["repositories"],
     queryFn: fetchRepos,
   });
 
@@ -1290,15 +1474,21 @@ export function RepositoriesPage() {
     <div className="p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white">Repositories</h1>
-        <p className="text-sm text-gray-400 mt-0.5">All monitored repositories</p>
+        <p className="text-sm text-gray-400 mt-0.5">
+          All monitored repositories
+        </p>
       </div>
 
       {isLoading && <p className="text-gray-500 text-sm">Loading…</p>}
-      {error && <p className="text-red-400 text-sm">Failed to load repositories.</p>}
+      {error && (
+        <p className="text-red-400 text-sm">Failed to load repositories.</p>
+      )}
 
       {data && data.length === 0 && (
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-8 text-center">
-          <p className="text-gray-400 text-sm">No repositories yet. Trigger a webhook to register one.</p>
+          <p className="text-gray-400 text-sm">
+            No repositories yet. Trigger a webhook to register one.
+          </p>
         </div>
       )}
 
@@ -1307,22 +1497,41 @@ export function RepositoriesPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-800">
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">Repository</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">Default Branch</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">Added</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  Repository
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  Default Branch
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  Added
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800">
-              {data.map(repo => (
-                <tr key={repo.id} className="hover:bg-gray-800/50 transition-colors">
-                  <td className="px-4 py-3 font-medium text-white">{repo.full_name}</td>
-                  <td className="px-4 py-3 text-gray-400 font-mono text-xs">{repo.default_branch}</td>
+              {data.map((repo) => (
+                <tr
+                  key={repo.id}
+                  className="hover:bg-gray-800/50 transition-colors"
+                >
+                  <td className="px-4 py-3 font-medium text-white">
+                    {repo.full_name}
+                  </td>
+                  <td className="px-4 py-3 text-gray-400 font-mono text-xs">
+                    {repo.default_branch}
+                  </td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                      repo.is_active ? 'bg-green-500/10 text-green-400' : 'bg-gray-700 text-gray-400'
-                    }`}>
-                      {repo.is_active ? 'Active' : 'Inactive'}
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                        repo.is_active
+                          ? "bg-green-500/10 text-green-400"
+                          : "bg-gray-700 text-gray-400"
+                      }`}
+                    >
+                      {repo.is_active ? "Active" : "Inactive"}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-gray-400 text-xs">
@@ -1351,20 +1560,21 @@ git commit -m "feat(dashboard): add ReviewsPage and RepositoriesPage"
 ### Task F8: Wire React Router and full App redesign
 
 **Files:**
+
 - Modify: `packages/dashboard/src/App.tsx`
 
 - [ ] **Step 1: Replace `packages/dashboard/src/App.tsx` entirely**
 
 ```tsx
-import { useState } from 'react';
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { clearStoredApiKey, getStoredApiKey } from './api/client';
-import { AppShell } from './layouts/AppShell';
-import { LoginPage } from './pages/LoginPage';
-import { DashboardPage } from './pages/DashboardPage';
-import { ReviewsPage } from './pages/ReviewsPage';
-import { RepositoriesPage } from './pages/RepositoriesPage';
+import { useState } from "react";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { clearStoredApiKey, getStoredApiKey } from "./api/client";
+import { AppShell } from "./layouts/AppShell";
+import { LoginPage } from "./pages/LoginPage";
+import { DashboardPage } from "./pages/DashboardPage";
+import { ReviewsPage } from "./pages/ReviewsPage";
+import { RepositoriesPage } from "./pages/RepositoriesPage";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 5_000, retry: 1 } },
@@ -1388,8 +1598,8 @@ export function App() {
       <BrowserRouter>
         <AppShell onLogout={handleLogout}>
           <Routes>
-            <Route path="/"             element={<DashboardPage />} />
-            <Route path="/reviews"      element={<ReviewsPage />} />
+            <Route path="/" element={<DashboardPage />} />
+            <Route path="/reviews" element={<ReviewsPage />} />
             <Route path="/repositories" element={<RepositoriesPage />} />
           </Routes>
         </AppShell>
@@ -1402,6 +1612,7 @@ export function App() {
 - [ ] **Step 2: Update ReviewList and ReviewDetail to work on dark background**
 
 The existing components use `bg-gray-50` and white cards. Update `ReviewList.tsx` — change the outer wrapper:
+
 ```tsx
 // In ReviewList.tsx, change:
 <div className="max-w-4xl mx-auto px-4 py-6">
@@ -1415,6 +1626,7 @@ The existing components use `bg-gray-50` and white cards. Update `ReviewList.tsx
 ```
 
 And the card container:
+
 ```tsx
 // Change:
 <div className="divide-y divide-gray-100 border border-gray-200 rounded-lg bg-white shadow-sm">
@@ -1423,14 +1635,18 @@ And the card container:
 ```
 
 And button rows:
+
 ```tsx
 // Change:
-className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3"
+className =
+  "w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3";
 // To:
-className="w-full text-left px-4 py-3 hover:bg-gray-800/50 flex items-center gap-3 transition-colors"
+className =
+  "w-full text-left px-4 py-3 hover:bg-gray-800/50 flex items-center gap-3 transition-colors";
 ```
 
 And text colors:
+
 ```tsx
 // Change: text-gray-900 → text-white, text-gray-400 stays
 <p className="text-sm font-medium text-white truncate">
@@ -1438,6 +1654,7 @@ And text colors:
 ```
 
 And footer:
+
 ```tsx
 // Change:
 <p className="text-xs text-gray-400 mt-3 text-right">
@@ -1473,30 +1690,31 @@ className="text-green-400 font-medium"
 ```tsx
 // Replace SEVERITY_COLORS with dark variants:
 const SEVERITY_COLORS: Record<string, string> = {
-  critical: 'border-red-500 bg-red-500/10',
-  high:     'border-orange-400 bg-orange-400/10',
-  medium:   'border-yellow-400 bg-yellow-400/10',
-  low:      'border-blue-400 bg-blue-400/10',
-  info:     'border-gray-600 bg-gray-800',
+  critical: "border-red-500 bg-red-500/10",
+  high: "border-orange-400 bg-orange-400/10",
+  medium: "border-yellow-400 bg-yellow-400/10",
+  low: "border-blue-400 bg-blue-400/10",
+  info: "border-gray-600 bg-gray-800",
 };
 
 // Change title text:
-className="text-sm font-semibold text-white"
+className = "text-sm font-semibold text-white";
 
 // Change file/line text:
-className="text-xs text-gray-500 mt-0.5"
+className = "text-xs text-gray-500 mt-0.5";
 
 // Change description text:
-className="text-sm text-gray-300 mt-2"
+className = "text-sm text-gray-300 mt-2";
 
 // Change metadata texts:
-className="text-xs text-gray-400 mt-1"
+className = "text-xs text-gray-400 mt-1";
 
 // Change resolve button:
-className="shrink-0 text-xs px-2 py-1 rounded bg-gray-800 border border-gray-700 hover:bg-gray-700 text-gray-300 disabled:opacity-50"
+className =
+  "shrink-0 text-xs px-2 py-1 rounded bg-gray-800 border border-gray-700 hover:bg-gray-700 text-gray-300 disabled:opacity-50";
 
 // Change resolved badge:
-className="shrink-0 text-xs text-green-400 font-medium"
+className = "shrink-0 text-xs text-green-400 font-medium";
 ```
 
 - [ ] **Step 5: Run TypeScript check**
@@ -1504,11 +1722,13 @@ className="shrink-0 text-xs text-green-400 font-medium"
 ```bash
 cd packages/dashboard && npx tsc --noEmit
 ```
+
 Expected: no errors.
 
 - [ ] **Step 6: Open http://localhost:5173 and verify**
 
 Expected:
+
 - Login page with dark background
 - After auth: dark sidebar with Dashboard / Reviews / Repos nav
 - Dashboard shows 4 stat cards + 3 charts
@@ -1532,6 +1752,7 @@ git commit -m "feat(dashboard): wire React Router, dark theme, full multi-page l
 ## Section G — Docker Dashboard Service
 
 ### File Structure
+
 - Create: `packages/dashboard/Dockerfile` — multi-stage: build Vite → serve with nginx
 - Create: `packages/dashboard/nginx.conf` — nginx config proxying /api/ to the API service
 - Modify: `docker-compose.yml` — add `dashboard` service
@@ -1541,6 +1762,7 @@ git commit -m "feat(dashboard): wire React Router, dark theme, full multi-page l
 ### Task G1: nginx config
 
 **Files:**
+
 - Create: `packages/dashboard/nginx.conf`
 
 - [ ] **Step 1: Create `packages/dashboard/nginx.conf`**
@@ -1579,15 +1801,18 @@ git commit -m "feat(docker): add nginx config for dashboard with API proxy"
 ### Task G2: Dashboard Dockerfile
 
 **Files:**
+
 - Create: `packages/dashboard/Dockerfile`
 - Modify: `packages/dashboard/src/api/client.ts` — ensure `VITE_API_URL` defaults to empty string (proxy handles it)
 
 - [ ] **Step 1: Verify `VITE_API_URL` default**
 
 In `packages/dashboard/src/api/client.ts`, the existing line is:
+
 ```typescript
-const BASE = import.meta.env.VITE_API_URL ?? '';
+const BASE = import.meta.env.VITE_API_URL ?? "";
 ```
+
 This is already correct — when `VITE_API_URL` is not set (Docker build), `BASE` is `''` and nginx proxies `/api/` requests.
 
 - [ ] **Step 2: Create `packages/dashboard/Dockerfile`**
@@ -1620,23 +1845,26 @@ git commit -m "feat(docker): add multi-stage Dockerfile for dashboard"
 ### Task G3: Add dashboard service to docker-compose.yml
 
 **Files:**
+
 - Modify: `docker-compose.yml`
 
 - [ ] **Step 1: Add dashboard service to `docker-compose.yml`**
 
 Add after the `worker` service, before `volumes:`:
+
 ```yaml
-  dashboard:
-    build:
-      context: packages/dashboard
-      dockerfile: Dockerfile
-    ports:
-      - "3000:80"
-    depends_on:
-      - api
+dashboard:
+  build:
+    context: packages/dashboard
+    dockerfile: Dockerfile
+  ports:
+    - "3000:80"
+  depends_on:
+    - api
 ```
 
 With this setup:
+
 - `http://localhost:3000` serves the React dashboard
 - `http://localhost:3000/api/v1/reviews` proxies to the FastAPI backend
 - No CORS issues since everything is same-origin through nginx
@@ -1644,6 +1872,7 @@ With this setup:
 - [ ] **Step 2: Update `.env` and `docker-compose.yml` CORS**
 
 In `docker-compose.yml`, the `api` service already has `CORS_ORIGINS` coming from `.env`. Add `http://localhost:3000` to `CORS_ORIGINS` in `.env`:
+
 ```
 CORS_ORIGINS=["http://localhost:5173","http://localhost:3000","http://localhost:8000"]
 ```
@@ -1659,6 +1888,7 @@ docker compose build dashboard && docker compose up -d dashboard
 ```bash
 curl -s http://localhost:3000 | grep -o '<title>.*</title>'
 ```
+
 Expected: `<title>Argus</title>` (or similar Vite default title).
 
 Open http://localhost:3000 in browser. Expected: Argus login page served by nginx.
@@ -1667,6 +1897,7 @@ Open http://localhost:3000 in browser. Expected: Argus login page served by ngin
 curl -s http://localhost:3000/api/v1/auth/verify \
   -H "Authorization: Bearer argus-dev-key-change-in-prod"
 ```
+
 Expected: `{"status":"ok"}` (proxied through nginx to FastAPI).
 
 - [ ] **Step 5: Commit**
@@ -1681,6 +1912,7 @@ git commit -m "feat(docker): add dashboard service to docker-compose with nginx 
 ## Self-Review
 
 **Spec coverage:**
+
 - [x] Auth: API key in Settings, `require_api_key` dependency, all `/api/v1/` routes protected, webhooks exempt, verify endpoint, login page, localStorage persistence — Tasks E1–E3
 - [x] Analytics API: 4 endpoints (overview, score-trend, severity-breakdown, top-categories) — Task F1
 - [x] Analytics types + client — Task F2
@@ -1697,6 +1929,7 @@ git commit -m "feat(docker): add dashboard service to docker-compose with nginx 
 **Placeholder scan:** None found. All steps have full code.
 
 **Type consistency:**
+
 - `OverviewStats`, `ScorePoint`, `SeverityCount`, `CategoryCount` defined in Task F2 types and used consistently in F6 charts
 - `analyticsApi.*` methods defined in Task F2 and called in Task F6
 - `AppShell` `onLogout` prop defined in F5 and passed in F8

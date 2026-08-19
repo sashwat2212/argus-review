@@ -23,9 +23,7 @@ class Organization(Base):
     plan: Mapped[str] = mapped_column(String(50), default="free")
     created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
 
-    users: Mapped[list[User]] = relationship(
-        "User", back_populates="organization"
-    )
+    users: Mapped[list[User]] = relationship("User", back_populates="organization")
     repositories: Mapped[list[Repository]] = relationship(
         "Repository", back_populates="organization"
     )

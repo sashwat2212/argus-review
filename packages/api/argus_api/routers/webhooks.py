@@ -74,9 +74,7 @@ async def github_webhook(
 
         gh_repo_id = str(repo_data["id"])
         repo = (
-            await session.execute(
-                select(Repository).where(Repository.github_repo_id == gh_repo_id)
-            )
+            await session.execute(select(Repository).where(Repository.github_repo_id == gh_repo_id))
         ).scalar_one_or_none()
         if not repo:
             repo = Repository(

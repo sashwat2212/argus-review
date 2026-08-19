@@ -64,11 +64,13 @@ async def post_pr_review(
                 f"**Why it matters:** {f.why_it_matters}\n\n"
                 f"**Suggested fix:** {f.suggested_fix}"
             )
-            inline_comments.append({
-                "path": f.file_path,
-                "line": f.line_end if f.line_end else f.line_start,
-                "body": body,
-            })
+            inline_comments.append(
+                {
+                    "path": f.file_path,
+                    "line": f.line_end if f.line_end else f.line_start,
+                    "body": body,
+                }
+            )
 
     url = f"{GH_API}/repos/{repo_full_name}/pulls/{pr_number}/reviews"
     payload: dict = {

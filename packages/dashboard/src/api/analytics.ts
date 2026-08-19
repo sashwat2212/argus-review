@@ -13,13 +13,16 @@ import type {
 
 const BASE = import.meta.env.VITE_API_URL ?? '';
 
-function authHeader(): Record<string, string> {
-  const key = localStorage.getItem('argus_api_key');
-  return key ? { Authorization: `Bearer ${key}` } : {};
-}
-
 async function get<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, { headers: authHeader() });
+  const res = await fetch(`${BASE}${path}`, {
+    credentials: 'include', // Send HTTPOnly JWT cookie
+  });
+  if (res.status === 401) {
+    if (window.location.pathname !== '/login') {
+      window.location.href = '/login';
+    }
+    throw new Error('Unauthorized');
+  }
   if (!res.ok) throw new Error(`API ${res.status}`);
   return res.json() as Promise<T>;
 }

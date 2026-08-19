@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { api } from './api/client';
@@ -21,13 +21,16 @@ function AppContent() {
     retry: false,
   });
 
-  const handleLogout = () => {
-    // To properly logout with HTTPOnly cookies, we'd ideally hit a backend /logout endpoint.
-    // For now, we clear the query cache and redirect.
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/v1/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch {
+      // Best-effort — proceed with local cleanup even if request fails
+    }
     queryClient.clear();
-    // A trick to clear cookies from frontend if not strictly HttpOnly or we just force reload.
-    // In production we should do: window.location.href = '/api/v1/auth/logout';
-    document.cookie = 'argus_session=; Max-Age=0; path=/';
     window.location.href = '/login';
   };
 

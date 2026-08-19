@@ -21,7 +21,9 @@ FAKE_REVIEWS = [
 
 
 def test_history_list(mock_reviews=None):
-    with patch("argus_cli.commands.history_cmd.list_reviews", new=AsyncMock(return_value=FAKE_REVIEWS)):
+    with patch(
+        "argus_cli.commands.history_cmd.list_reviews", new=AsyncMock(return_value=FAKE_REVIEWS)
+    ):
         result = runner.invoke(app, ["history"])
     assert result.exit_code == 0
     assert "Fix auth bug" in result.output or "42" in result.output

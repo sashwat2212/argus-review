@@ -8,6 +8,7 @@ dependencies = [
     "langchain-community>=0.2",
     "langchain-ollama>=0.1",
     "langchain-anthropic>=0.1",
+    "langchain-groq>=0.1",
     "anthropic>=0.28",
     "pydantic>=2.7",
     "pydantic-settings>=2.3",

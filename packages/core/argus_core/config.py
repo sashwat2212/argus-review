@@ -8,16 +8,20 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class CoreConfig(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="ARGUS_", env_file=".env", extra="ignore")
 
-    llm_backend: Literal["ollama", "anthropic"] = "ollama"
+    llm_backend: Literal["ollama", "anthropic", "groq"] = "ollama"
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "codellama:13b"
     anthropic_api_key: str | None = None
     anthropic_model: str = "claude-sonnet-4-6"
+    groq_api_key: str | None = None
+    groq_model: str = "llama-3.3-70b-versatile"
     max_chunk_lines: int = 150
     max_concurrent_chunks: int = 3
 
-    def effective_backend(self) -> Literal["ollama", "anthropic"]:
+    def effective_backend(self) -> Literal["ollama", "anthropic", "groq"]:
         """Use explicit backend setting; only auto-select anthropic if explicitly configured."""
         if self.llm_backend == "anthropic" and self.anthropic_api_key:
             return "anthropic"
+        if self.llm_backend == "groq" and self.groq_api_key:
+            return "groq"
         return "ollama"

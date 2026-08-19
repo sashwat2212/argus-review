@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import case, func, select, update
@@ -9,10 +9,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from argus_api.database import get_session
-from argus_api.dependencies import require_api_key
+from argus_api.dependencies import get_current_user
 from argus_api.limiter import limiter
 from argus_api.models.finding import Finding
+from argus_api.models.repository import Repository
 from argus_api.models.review import Review
+from argus_api.models.user import User
 from argus_api.schemas.finding import FindingOut, FindingPatch
 from argus_api.schemas.review import (
     AgentBreakdownItem,
@@ -31,6 +33,15 @@ except Exception:  # pragma: no cover
 router = APIRouter(prefix="/api/v1/reviews", tags=["reviews"])
 
 
+def _org_scoped_review_query(org_id: uuid.UUID):
+    """Base query that filters reviews to the caller's organization."""
+    return (
+        select(Review)
+        .join(Repository, Review.repo_id == Repository.id)
+        .where(Repository.org_id == org_id)
+    )
+
+
 @router.get("", response_model=ReviewListOut)
 @limiter.limit("60/minute")
 async def list_reviews(
@@ -39,14 +50,20 @@ async def list_reviews(
     page_size: int = 20,
     status: str | None = None,
     session: AsyncSession = Depends(get_session),
-    _auth: None = Depends(require_api_key),
+    current_user: User = Depends(get_current_user),
 ) -> ReviewListOut:
     offset = (page - 1) * page_size
-    query = select(Review).options(
+
+    query = _org_scoped_review_query(current_user.org_id).options(
         selectinload(Review.findings),
         selectinload(Review.repository),
     )
-    count_query = select(func.count()).select_from(Review)
+    count_query = (
+        select(func.count())
+        .select_from(Review)
+        .join(Repository, Review.repo_id == Repository.id)
+        .where(Repository.org_id == current_user.org_id)
+    )
 
     if status:
         query = query.where(Review.status == status)
@@ -54,10 +71,14 @@ async def list_reviews(
 
     total = (await session.execute(count_query)).scalar_one()
     rows = (
-        await session.execute(
-            query.order_by(Review.started_at.desc()).offset(offset).limit(page_size)
+        (
+            await session.execute(
+                query.order_by(Review.started_at.desc()).offset(offset).limit(page_size)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
 
     return ReviewListOut(items=list(rows), total=total, page=page, page_size=page_size)
 
@@ -68,11 +89,11 @@ async def get_review(
     request: Request,
     review_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
-    _auth: None = Depends(require_api_key),
+    current_user: User = Depends(get_current_user),
 ) -> Review:
     row = (
         await session.execute(
-            select(Review)
+            _org_scoped_review_query(current_user.org_id)
             .options(
                 selectinload(Review.findings),
                 selectinload(Review.repository),
@@ -91,11 +112,11 @@ async def retry_review(
     request: Request,
     review_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
-    _auth: None = Depends(require_api_key),
+    current_user: User = Depends(get_current_user),
 ) -> ReviewRetryOut:
     original = (
         await session.execute(
-            select(Review)
+            _org_scoped_review_query(current_user.org_id)
             .options(selectinload(Review.repository))
             .where(Review.id == review_id)
         )
@@ -114,7 +135,7 @@ async def retry_review(
         base_sha=original.base_sha,
         head_sha=original.head_sha,
         status="pending",
-        started_at=datetime.utcnow(),
+        started_at=datetime.now(UTC),
     )
     session.add(new_review)
     await session.commit()
@@ -136,13 +157,20 @@ async def patch_finding(
     finding_id: uuid.UUID,
     body: FindingPatch,
     session: AsyncSession = Depends(get_session),
-    _auth: None = Depends(require_api_key),
+    current_user: User = Depends(get_current_user),
 ) -> Finding:
+    # Verify the review belongs to the user's org before mutating
+    review = (
+        await session.execute(
+            _org_scoped_review_query(current_user.org_id).where(Review.id == review_id)
+        )
+    ).scalar_one_or_none()
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+
     finding = (
         await session.execute(
-            select(Finding).where(
-                Finding.id == finding_id, Finding.review_id == review_id
-            )
+            select(Finding).where(Finding.id == finding_id, Finding.review_id == review_id)
         )
     ).scalar_one_or_none()
     if not finding:
@@ -159,39 +187,49 @@ async def get_review_stats(
     request: Request,
     review_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
-    _auth: None = Depends(require_api_key),
+    current_user: User = Depends(get_current_user),
 ) -> ReviewStatsOut:
-    review = (await session.execute(
-        select(Review).where(Review.id == review_id)
-    )).scalar_one_or_none()
+    review = (
+        await session.execute(
+            _org_scoped_review_query(current_user.org_id).where(Review.id == review_id)
+        )
+    ).scalar_one_or_none()
     if not review:
         raise HTTPException(status_code=404, detail="Review not found")
 
-    sev_rows = (await session.execute(
-        select(Finding.severity, func.count().label("cnt"))
-        .where(Finding.review_id == review_id)
-        .group_by(Finding.severity)
-        .order_by(func.count().desc())
-    )).all()
-
-    agent_rows = (await session.execute(
-        select(
-            Finding.agent,
-            func.count().label("total"),
-            func.sum(case((Finding.is_resolved.is_(True), 1), else_=0)).label("resolved"),
+    sev_rows = (
+        await session.execute(
+            select(Finding.severity, func.count().label("cnt"))
+            .where(Finding.review_id == review_id)
+            .group_by(Finding.severity)
+            .order_by(func.count().desc())
         )
-        .where(Finding.review_id == review_id)
-        .group_by(Finding.agent)
-    )).all()
+    ).all()
 
-    total = (await session.execute(
-        select(func.count()).select_from(Finding).where(Finding.review_id == review_id)
-    )).scalar_one()
-    resolved = (await session.execute(
-        select(func.count()).select_from(Finding).where(
-            Finding.review_id == review_id, Finding.is_resolved.is_(True)
+    agent_rows = (
+        await session.execute(
+            select(
+                Finding.agent,
+                func.count().label("total"),
+                func.sum(case((Finding.is_resolved.is_(True), 1), else_=0)).label("resolved"),
+            )
+            .where(Finding.review_id == review_id)
+            .group_by(Finding.agent)
         )
-    )).scalar_one()
+    ).all()
+
+    total = (
+        await session.execute(
+            select(func.count()).select_from(Finding).where(Finding.review_id == review_id)
+        )
+    ).scalar_one()
+    resolved = (
+        await session.execute(
+            select(func.count())
+            .select_from(Finding)
+            .where(Finding.review_id == review_id, Finding.is_resolved.is_(True))
+        )
+    ).scalar_one()
 
     return ReviewStatsOut(
         severity_breakdown=[SeverityCount(severity=r.severity, count=r.cnt) for r in sev_rows],
@@ -215,13 +253,17 @@ async def resolve_all_findings(
     request: Request,
     review_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
-    _auth: None = Depends(require_api_key),
+    current_user: User = Depends(get_current_user),
 ) -> dict:
-    review = (await session.execute(
-        select(Review).where(Review.id == review_id)
-    )).scalar_one_or_none()
+    # Verify org ownership before bulk-mutating
+    review = (
+        await session.execute(
+            _org_scoped_review_query(current_user.org_id).where(Review.id == review_id)
+        )
+    ).scalar_one_or_none()
     if not review:
         raise HTTPException(status_code=404, detail="Review not found")
+
     await session.execute(
         update(Finding)
         .where(Finding.review_id == review_id, Finding.is_resolved.is_(False))
@@ -229,4 +271,3 @@ async def resolve_all_findings(
     )
     await session.commit()
     return {"status": "ok", "review_id": str(review_id)}
-

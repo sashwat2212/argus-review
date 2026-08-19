@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 
-from argus_core.models import Finding
+from argus_core.models import Finding, Severity
 
 
 def parse_findings_response(content: str, agent: str) -> list[Finding]:
@@ -53,8 +53,8 @@ def parse_findings_response(content: str, agent: str) -> list[Finding]:
     return findings
 
 
-def _normalize_severity(value: object) -> str:
+def _normalize_severity(value: object) -> Severity:
     s = str(value).lower().strip()
     if s in ("critical", "high", "medium", "low", "info"):
-        return s
+        return s  # type: ignore[return-value]  # narrowed by membership test
     return "info"

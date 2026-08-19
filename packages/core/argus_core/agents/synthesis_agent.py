@@ -49,9 +49,8 @@ def _find_overlap_groups(
     for i in range(n):
         for j in range(i + 1, n):
             fi, fj = findings[i], findings[j]
-            if (
-                fi.file_path == fj.file_path
-                and max(fi.line_start, fj.line_start) <= min(fi.line_end, fj.line_end)
+            if fi.file_path == fj.file_path and max(fi.line_start, fj.line_start) <= min(
+                fi.line_end, fj.line_end
             ):
                 adj[i].add(j)
                 adj[j].add(i)
@@ -113,7 +112,7 @@ async def _merge_group(group: list[Finding], llm: BaseChatModel) -> list[Finding
     try:
         prompt = build_merge_prompt(to_merge)
         response = await llm.ainvoke(prompt)
-        data = _parse_merge_response(response.content)
+        data = _parse_merge_response(str(response.content))
     except Exception as exc:
         logger.warning("Synthesis merge LLM call failed: %s — keeping all findings", exc)
         return group
