@@ -42,8 +42,8 @@ jobs:
 
       - name: Run Argus review
         env:
-          ARGUS_LLM_BACKEND: anthropic
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ARGUS_LLM_BACKEND: groq
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           argus review \
