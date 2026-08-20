@@ -39,8 +39,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 app = FastAPI(
-    title="Argus API", 
-    version="0.1.0", 
+    title="Argus API",
+    version="0.1.0",
     lifespan=lifespan,
     docs_url="/docs" if not is_prod else None,
     redoc_url="/redoc" if not is_prod else None,
