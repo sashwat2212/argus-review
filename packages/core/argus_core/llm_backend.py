@@ -23,8 +23,8 @@ def get_llm(config: CoreConfig) -> BaseChatModel:
         )
 
     if backend == "groq":
-        from langchain_groq import ChatGroq
         from langchain_core.rate_limiters import InMemoryRateLimiter
+        from langchain_groq import ChatGroq
 
         rate_limiter = InMemoryRateLimiter(
             requests_per_second=0.4,

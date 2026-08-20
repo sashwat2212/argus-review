@@ -4,9 +4,8 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from argus_api.main import app
-from httpx import ASGITransport, AsyncClient
-
 from conftest import AUTH_HEADERS, TEST_ORG_ID
+from httpx import ASGITransport, AsyncClient
 
 # ---------------------------------------------------------------------------
 # Shared seed fixture
@@ -165,7 +164,6 @@ ANALYTICS_PATHS = [
 async def test_analytics_requires_auth(path: str):
     """Each analytics endpoint must reject unauthenticated requests with 401."""
     from argus_api.dependencies import get_current_user
-
     from conftest import _test_user
 
     app.dependency_overrides.pop(get_current_user, None)

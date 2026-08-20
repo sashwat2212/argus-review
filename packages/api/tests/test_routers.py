@@ -4,9 +4,8 @@ import uuid
 
 import pytest
 from argus_api.main import app
-from httpx import ASGITransport, AsyncClient
-
 from conftest import AUTH_HEADERS, TEST_ORG_ID
+from httpx import ASGITransport, AsyncClient
 
 
 @pytest.mark.asyncio
