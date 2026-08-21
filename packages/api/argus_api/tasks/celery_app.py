@@ -27,3 +27,12 @@ celery_app.conf.update(
     timezone="UTC",
     enable_utc=True,
 )
+
+from celery.signals import worker_ready
+from argus_api.worker_health import start_health_server
+
+@worker_ready.connect
+def start_health_endpoint(**kwargs):
+    # Render provides a PORT environment variable, defaulting to 10000
+    port = int(os.environ.get("PORT", 10000))
+    start_health_server(port)
