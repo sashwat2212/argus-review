@@ -25,4 +25,4 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 EXPOSE 8000
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
-CMD ["uvicorn", "argus_api.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-reload"]
+CMD ["uvicorn", "argus_api.main:app", "--host", "0.0.0.0", "--port", "8000"]
