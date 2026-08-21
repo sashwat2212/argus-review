@@ -283,7 +283,7 @@ async def get_finding_velocity(
             .join(Finding, Finding.review_id == Review.id)
             .where(
                 Repository.org_id == current_user.org_id,
-                Review.started_at >= datetime.now(UTC) - timedelta(days=days),
+                Review.started_at >= datetime.now(UTC).replace(tzinfo=None) - timedelta(days=days),
             )
             .group_by(func.date(Review.started_at))
         )
@@ -301,7 +301,7 @@ async def get_finding_velocity(
             .where(
                 Repository.org_id == current_user.org_id,
                 Finding.is_resolved.is_(True),
-                Review.completed_at >= datetime.now(UTC) - timedelta(days=days),
+                Review.completed_at >= datetime.now(UTC).replace(tzinfo=None) - timedelta(days=days),
             )
             .group_by(func.date(Review.completed_at))
         )
