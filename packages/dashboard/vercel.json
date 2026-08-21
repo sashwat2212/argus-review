@@ -2,15 +2,15 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://argus-api.onrender.com/api/:path*"
+      "destination": "https://argus-api-srnv.onrender.com/api/:path*"
     },
     {
       "source": "/webhooks/:path*",
-      "destination": "https://argus-api.onrender.com/webhooks/:path*"
+      "destination": "https://argus-api-srnv.onrender.com/webhooks/:path*"
     },
     {
       "source": "/health",
-      "destination": "https://argus-api.onrender.com/health"
+      "destination": "https://argus-api-srnv.onrender.com/health"
     },
     {
       "source": "/(.*)",
